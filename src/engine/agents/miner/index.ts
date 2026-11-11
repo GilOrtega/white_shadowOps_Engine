@@ -49,6 +49,12 @@ export interface MinerResult {
   };
 }
 
+/** Avance en vivo (para SSE / barras de progreso). Nunca debe lanzar. */
+export interface MinerHooks {
+  onStart?: (info: { windows: number; segments: number }) => void;
+  onWindow?: (info: { index: number; done: number; total: number; candidates: number; inputTokens: number; outputTokens: number; error?: string }) => void;
+}
+
 /** score final = 60% viralidad + 40% densidad de valor. */
 const finalScore = (c: MinerCandidate) => Math.round(c.viralityScore * 0.6 + c.valueDensity * 0.4);
 
@@ -97,6 +103,7 @@ export async function mineClips(
   transcriptInput: unknown,
   options: MinerOptions = {},
   signal?: AbortSignal,
+  hooks: MinerHooks = {},
 ): Promise<MinerResult> {
   const t0 = Date.now();
 
@@ -123,6 +130,20 @@ export async function mineClips(
   const stats = { windows: windows.length, candidates: 0, llmAttempts: 0, inputTokens: 0, outputTokens: 0, elapsedMs: 0 };
   const windowErrors: MinerResult["windowErrors"] = [];
   const dropped: DroppedCandidate[] = [];
+  let windowsDone = 0;
+  const report = (info: Omit<Parameters<NonNullable<MinerHooks["onWindow"]>>[0], "done" | "total">) => {
+    windowsDone++;
+    try {
+      hooks.onWindow?.({ ...info, done: windowsDone, total: windows.length });
+    } catch {
+      /* un hook roto no tumba al Miner */
+    }
+  };
+  try {
+    hooks.onStart?.({ windows: windows.length, segments: segments.length });
+  } catch {
+    /* idem */
+  }
 
   const runWindow = async (w: TranscriptWindow) => {
     try {
@@ -149,11 +170,13 @@ export async function mineClips(
       stats.inputTokens += res.usage.inputTokens;
       stats.outputTokens += res.usage.outputTokens;
 
+      report({ index: w.index, candidates: res.data.clips.length, inputTokens: res.usage.inputTokens, outputTokens: res.usage.outputTokens });
       // El modelo solo puede usar IDs de SU ventana.
       const allowed = new Set(w.segments.map((s) => s.id));
       return res.data.clips.slice(0, opts.maxClipsPerWindow).map((c) => ({ c, windowIndex: w.index, allowed }));
     } catch (err) {
       if (opts.failFast || (isEngineError(err) && err.code === "ABORTED")) throw err;
+      report({ index: w.index, candidates: 0, inputTokens: 0, outputTokens: 0, error: isEngineError(err) ? err.code : "UNKNOWN" });
       windowErrors.push({
         windowIndex: w.index,
         code: isEngineError(err) ? err.code : "UNKNOWN",

@@ -1,17 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import type { MascotAnswer, MascotRequest } from "@/hq/agents/mascota";
 import { callAgent } from "@/hq/client";
 import * as L from "@/hq/logic";
 import type { HqState } from "@/hq/schemas";
+import { setGhostActivity, useGhostActivity } from "@/hq/ui-prefs";
 import { btn, input } from "./ui";
 
 /**
  * Sombra, la mascota original de WhiteShadow: un fantasma blanco con banda de gym.
  * Dibujo con volumen (luz arriba, sombra abajo), mejillas y brillo en los ojos; cambia de cara según el ánimo.
  */
-export function MascotFace({ mood, size = 96 }: { mood: L.Mood; size?: number }) {
+export function MascotFace({ mood, size = 96, thinking = false }: { mood: L.Mood; size?: number; thinking?: boolean }) {
   const happy = mood === "fiesta";
   const eyes = happy ? (
     <g fill="none" stroke="#111" strokeWidth="3.4" strokeLinecap="round"><path d="M40 60q7-9 14 0" /><path d="M66 60q7-9 14 0" /></g>
@@ -52,6 +53,11 @@ export function MascotFace({ mood, size = 96 }: { mood: L.Mood; size?: number })
         {mood === "fuego" && <path d="M108 18c1 6 7 8 7 15a7 7 0 0 1-14 0c0-2 1-4 2.5-5 0 2 1 3.5 2.5 2.5 1-4 0-8 2-12.500z" fill="#ff9f43" />}
         {mood === "preocupado" && <path d="M90 44q4 6 0 10-4-4 0-10z" fill="#6cb4ff" />}
       </g>
+      {thinking && (
+        <g className="wso-orbit" style={{ transformOrigin: "60px 62px" }}>
+          <circle cx="60" cy="8" r="4" fill="#c6f432" /><circle cx="112" cy="70" r="3" fill="#8cc1ff" /><circle cx="14" cy="96" r="3.5" fill="#c6f432" opacity="0.8" />
+        </g>
+      )}
     </svg>
   );
 }
@@ -74,61 +80,81 @@ function context(hq: HqState, today: string): MascotRequest["context"] {
   };
 }
 
+/* La plática vive fuera del componente: no se pierde al cerrar la hoja o mover el inspector. */
+type ChatState = { chat: Msg[]; mood: L.Mood | null; busy: boolean };
+let chatState: ChatState = { chat: [], mood: null, busy: false };
+const chatListeners = new Set<() => void>();
+const setChat = (patch: Partial<ChatState> | ((s: ChatState) => Partial<ChatState>)) => {
+  chatState = { ...chatState, ...(typeof patch === "function" ? patch(chatState) : patch) };
+  chatListeners.forEach((l) => l());
+};
+const EMPTY: ChatState = { chat: [], mood: null, busy: false };
+function useChat(): ChatState {
+  return useSyncExternalStore((cb) => { chatListeners.add(cb); return () => chatListeners.delete(cb); }, () => chatState, () => EMPTY);
+}
+
+/** Estado visual de la mascota: lo que dijo al último, o "pensando" si algo del sistema está trabajando. */
+export function useGhostMood(hq: HqState, today: string, hour: number): { mood: L.Mood; thinking: boolean; line: string } {
+  const { mood, busy } = useChat();
+  const activity = useGhostActivity();
+  const opening = L.mascotLine(hq, today, hour);
+  if (activity?.kind === "pensando") return { mood: "listo", thinking: true, line: activity.label };
+  if (activity?.kind === "exito") return { mood: "fiesta", thinking: false, line: activity.label };
+  return { mood: mood ?? opening.mood, thinking: busy, line: opening.text };
+}
+
 const theirs = "self-start rounded-[20px] rounded-bl-md border border-white/[0.07] bg-white/[0.06] px-4 py-2.5 text-[16px] leading-snug";
 const mine = "max-w-[85%] self-end rounded-[20px] rounded-br-md bg-lime px-4 py-2.5 text-[16px] font-medium leading-snug text-ink";
 
-export function Mascot({ hq, today, hour }: { hq: HqState; today: string; hour: number }) {
-  const opening = L.mascotLine(hq, today, hour);
-  const [chat, setChat] = useState<Msg[]>([]);
-  const [mood, setMood] = useState<L.Mood | null>(null);
+/** Chat con la mascota. `variant="panel"` es la versión del inspector / hoja (sin tarjeta propia). */
+export function Mascot({ hq, today, hour, variant = "card" }: { hq: HqState; today: string; hour: number; variant?: "card" | "panel" }) {
+  const { chat, busy } = useChat();
+  const ghost = useGhostMood(hq, today, hour);
   const [text, setText] = useState("");
-  const [busy, setBusy] = useState(false);
   const name = hq.profile.mascotName;
 
   function quick(ask: (typeof ASKS)[number]) {
     const r = L.mascotReply(ask.id, hq, today);
-    setChat((c) => [...c, { from: "yo", text: ask.label }, { from: "mascota", text: r.text }]);
-    setMood(r.mood);
+    setChat((s) => ({ chat: [...s.chat, { from: "yo", text: ask.label }, { from: "mascota", text: r.text }], mood: r.mood }));
   }
 
   async function send(e: React.FormEvent) {
     e.preventDefault();
     const message = text.trim();
-    if (!message || busy) return;
-    const history = chat.slice(-8);
-    setChat((c) => [...c, { from: "yo", text: message }]);
+    if (!message || chatState.busy) return;
+    const history = chatState.chat.slice(-8);
+    setChat((s) => ({ chat: [...s.chat, { from: "yo", text: message }], busy: true }));
     setText("");
-    setBusy(true);
+    setGhostActivity(null);
     const res = await callAgent<MascotAnswer>("/api/agents/mascota", { message, history, context: context(hq, today) }, hq.accessKey);
-    setBusy(false);
     if (res.ok) {
-      setChat((c) => [...c, { from: "mascota", text: res.data.reply }]);
-      setMood(res.data.mood);
+      setChat((s) => ({ chat: [...s.chat, { from: "mascota", text: res.data.reply }], mood: res.data.mood, busy: false }));
     } else {
       const why = res.code === "NOT_CONFIGURED" || res.code === "UNAUTHORIZED" ? "Para platicar libre conmigo falta activar la IA. Mientras, usa mis botones: esos siempre jalan." : res.message;
-      setChat((c) => [...c, { from: "mascota", text: why }]);
+      setChat((s) => ({ chat: [...s.chat, { from: "mascota", text: why }], busy: false }));
     }
   }
 
+  const panel = variant === "panel";
   return (
-    <section id="sombra" aria-label={`${name}, tu mascota`} className="glass flex scroll-mt-6 flex-col gap-4 rounded-[22px] p-5">
+    <section id="sombra" aria-label={`${name}, tu mascota`} className={panel ? "flex min-h-0 flex-col gap-3" : "glass flex scroll-mt-6 flex-col gap-4 rounded-[22px] p-5"}>
       <div className="flex items-end gap-3">
-        <div className="relative flex h-[8.5rem] w-[7.5rem] shrink-0 items-end justify-center overflow-hidden rounded-[26px] bg-gradient-to-b from-iris/30 via-iris/10 to-transparent pb-1 ring-1 ring-inset ring-iris/25">
-          <MascotFace mood={mood ?? opening.mood} size={108} />
+        <div className={`relative flex shrink-0 items-end justify-center overflow-hidden rounded-[26px] bg-gradient-to-b from-iris/30 via-iris/10 to-transparent pb-1 ring-1 ring-inset ring-iris/25 ${panel ? "h-[6.5rem] w-[5.75rem]" : "h-[8.5rem] w-[7.5rem]"}`}>
+          <MascotFace mood={ghost.mood} thinking={ghost.thinking} size={panel ? 82 : 108} />
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-1.5 pb-1">
           <p className="pl-1 text-[13px] font-semibold text-iris">{name}</p>
-          <p className={theirs}>{opening.text}</p>
+          <p className={theirs}>{ghost.line}</p>
         </div>
       </div>
       {(chat.length > 0 || busy) && (
-        <div aria-live="polite" className="flex flex-col gap-2">
+        <div aria-live="polite" className={`flex flex-col gap-2 ${panel ? "min-h-0 overflow-y-auto" : ""}`}>
           {chat.map((m, i) => <p key={i} className={`wso-in ${m.from === "yo" ? mine : theirs}`}>{m.text}</p>)}
           {busy && <p className="pl-1 text-sm text-mute">{name} está escribiendo…</p>}
         </div>
       )}
-      <div className="no-scrollbar -mx-5 flex gap-2 overflow-x-auto px-5">
-        {ASKS.map((a) => <button key={a.id} type="button" className={btn.chip} onClick={() => quick(a)}>{a.label}</button>)}
+      <div className={`no-scrollbar flex gap-2 overflow-x-auto ${panel ? "" : "-mx-5 px-5"}`}>
+        {ASKS.map((a) => <button key={a.id} type="button" className={`${btn.chip} min-h-9 text-[14px]`} onClick={() => quick(a)}>{a.label}</button>)}
       </div>
       <form onSubmit={send} className="flex gap-2">
         <input aria-label={`Escríbele a ${name}`} className={`${input} rounded-full px-4`} value={text} onChange={(e) => setText(e.target.value)} maxLength={300} placeholder={`Escríbele a ${name}`} />

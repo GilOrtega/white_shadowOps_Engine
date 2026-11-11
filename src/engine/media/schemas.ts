@@ -83,6 +83,8 @@ export const RenderJobSchema = z
     words: z.array(WordSchema).default([]),
     layout: LayoutSchema.default({ mode: "blur-fill", blurRadius: 24 }),
     subtitles: SubtitleStyleSchema.nullable().prefault({}),
+    /** Auto-Hook: texto en pantalla de los primeros segundos (null = sin gancho). */
+    hook: z.object({ text: z.string().trim().min(1).max(80), durationSec: z.number().min(0.5).max(6).default(2.8) }).nullable().default(null),
     output: OutputSpecSchema.prefault({}),
     outDir: z.string().min(1),
     /** Re-renderiza aunque ya exista el archivo. */

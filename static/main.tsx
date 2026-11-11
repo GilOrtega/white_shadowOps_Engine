@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { usePathname } from "next/navigation";
+import { Studio } from "@/components/crew/Studio";
 import { Dashboard } from "@/components/hq/Dashboard";
 import { PlanInterview } from "@/components/hq/PlanInterview";
 import { Progress } from "@/components/hq/Progress";
@@ -23,7 +24,7 @@ function App() {
   }, [path]);
   return (
     <Shell>
-      {path === "/plan" ? <PlanInterview /> : path === "/progreso" ? <Progress /> : path === "/ajustes" ? <Settings /> : path === "/engine" ? <Shorts /> : <Dashboard />}
+      {path === "/plan" ? <PlanInterview /> : path === "/progreso" ? <Progress /> : path === "/ajustes" ? <Settings /> : path === "/crew" ? <Studio /> : path === "/engine" ? <Shorts /> : <Dashboard />}
     </Shell>
   );
 }

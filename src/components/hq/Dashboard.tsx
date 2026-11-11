@@ -13,6 +13,7 @@ import { Mascot } from "./Mascot";
 import { TodayCapture } from "./Journal";
 import { MealLogger } from "./MealLogger";
 import { Avatar, Bar, btn, Card, Check, group, H2, Icon, input, Loading, PageTitle, Pill, row } from "./ui";
+import { DailyFuel, RapoMeter, StreakAvatar } from "./Widgets";
 
 export function Dashboard() {
   const hq = useHq();
@@ -41,16 +42,13 @@ export function DashboardView({ hq, today, hour = 12 }: { hq: HqState; today: st
   return (
     <div className="flex flex-col gap-6">
       <PageTitle title="Hoy" sub={longDate(today)} right={
-        <Link href="/ajustes" aria-label="Tu perfil y ajustes" className="mb-1 shrink-0">
-          {hq.profile.photo ? (
-            // eslint-disable-next-line @next/next/no-img-element -- foto local en data URL
-            <img src={hq.profile.photo} alt="" width={44} height={44} className="h-11 w-11 rounded-full object-cover ring-1 ring-white/15" />
-          ) : (
-            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/[0.08] font-display text-lg font-bold text-lime ring-1 ring-white/10">{hq.profile.name.charAt(0)}</span>
-          )}
-        </Link>
+        <Link href="/ajustes" aria-label="Tu perfil y ajustes" className="mb-1 shrink-0"><StreakAvatar hq={hq} today={today} size={48} /></Link>
       } />
       <Hero hq={hq} today={today} />
+      <div className="grid items-stretch gap-4 lg:grid-cols-2">
+        <RapoMeter hq={hq} today={today} hour={hour} />
+        <DailyFuel hq={hq} today={today} />
+      </div>
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
         <Mascot hq={hq} today={today} hour={hour} />
         <TodayCapture today={today} />

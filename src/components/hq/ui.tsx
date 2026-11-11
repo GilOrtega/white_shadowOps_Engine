@@ -108,6 +108,13 @@ const paths: Record<string, ReactNode> = {
   left: <path d="M15 6l-6 6 6 6" />,
   scale: <><rect x="3" y="4" width="18" height="16" rx="4" /><path d="M8.5 10a5 5 0 0 1 7 0l-2.5 2.5" /></>,
   fork: <><path d="M7 3v8a3 3 0 0 0 6 0V3M10 3v18" /><path d="M17 3c-1.5 1.5-2 3.5-2 6s1 3 2 3v9" /></>,
+  sparkles: <><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z" /><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z" /></>,
+  cpu: <><rect x="6" y="6" width="12" height="12" rx="2.5" /><path d="M9.5 9.5h5v5h-5zM9 2.5V6M15 2.5V6M9 18v3.500M15 18v3.500M2.5 9H6M2.5 15H6M18 9h3.500M18 15h3.500" /></>,
+  check: <path d="M5 12.5l4.5 4.5L19 7.5" />,
+  play: <path d="M8 5.5v13l10.500-6.500z" />,
+  copy: <><rect x="8.500" y="8.500" width="11" height="11" rx="2.500" /><path d="M15.500 8.500V6a1.500 1.500 0 0 0-1.500-1.500H6A1.500 1.500 0 0 0 4.500 6v8A1.500 1.500 0 0 0 6 15.500h2.500" /></>,
+  download: <><path d="M12 4v11M7.500 10.500 12 15l4.500-4.500" /><path d="M5 19.500h14" /></>,
+  rocket: <><path d="M12 15l-3-3c1.500-5 4.500-8.500 10-9 -.5 5.500-4 8.500-9 10z" /><path d="M9 12l-3.500.5L4 15l3.500.5M12 15l-.5 3.500L9 20l-.5-3.500" /><circle cx="15" cy="9" r="1.300" /></>,
 };
 export function Icon({ name, size = 20, strokeWidth = 2 }: { name: keyof typeof paths | string; size?: number; strokeWidth?: number }) {
   return (

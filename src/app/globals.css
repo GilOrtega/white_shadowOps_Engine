@@ -51,6 +51,7 @@
   --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter Display", "Segoe UI Variable Display", "Segoe UI", Roboto, sans-serif;
 }
 
+
 html {
   -webkit-text-size-adjust: 100%;
   background: var(--bg);
@@ -233,4 +234,28 @@ a:active {
 }
 @media (prefers-reduced-transparency: reduce) {
   .glass { background: var(--panel-solid); backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+
+/* Estudio de shorts y HUD: estados de la mascota y del pipeline. */
+@keyframes wso-breathe {
+  0%, 100% { box-shadow: 0 0 0 0 var(--halo, rgb(198 244 50 / 0)); }
+  50% { box-shadow: 0 0 0 8px var(--halo, rgb(198 244 50 / 0.28)); }
+}
+@keyframes wso-orbit { to { transform: rotate(360deg); } }
+@keyframes wso-launch {
+  0% { transform: translateY(0) scale(1); }
+  40% { transform: translateY(2px) scale(0.96); }
+  100% { transform: translateY(0) scale(1); }
+}
+@keyframes wso-shimmer { from { background-position: -200% 0; } to { background-position: 200% 0; } }
+.wso-breathe { animation: wso-breathe 3.6s ease-in-out infinite; }
+.wso-orbit { animation: wso-orbit 2.4s linear infinite; }
+.wso-launch { animation: wso-launch 0.45s var(--ease-spring); }
+.wso-shimmer {
+  background-image: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.35), transparent);
+  background-size: 200% 100%;
+  animation: wso-shimmer 1.6s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .wso-breathe, .wso-orbit, .wso-launch, .wso-shimmer { animation: none; }
 }

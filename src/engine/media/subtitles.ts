@@ -81,6 +81,8 @@ export function buildAss(args: {
   style: SubtitleStyle;
   width: number;
   height: number;
+  /** Auto-Hook: texto grande arriba durante los primeros segundos (lo que evita que deslicen). */
+  hook?: { text: string; durationSec: number } | null;
 }): string {
   const { style } = args;
   const rel = wordsInClip(args.words, args.clipStart, args.clipEnd);
@@ -116,12 +118,36 @@ export function buildAss(args: {
       style.marginV,
       1,
     ].join(","),
+    // Gancho: texto negro sobre caja blanca opaca (BorderStyle 3), arriba-centro.
+    [
+      "Style: Hook",
+      style.fontName,
+      Math.round(style.fontSize * 0.86),
+      hexToAss("#000000"),
+      hexToAss("#000000"),
+      hexToAss("#FFFFFF"),
+      hexToAss("#FFFFFF"),
+      -1,
+      0, 0, 0, 100, 100, 0, 0,
+      3,
+      18,
+      0,
+      8, // arriba-centro
+      90, 90,
+      Math.round(args.height * 0.14),
+      1,
+    ].join(","),
     "",
     "[Events]",
     "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
   ];
 
   const events: string[] = [];
+  const hookText = args.hook?.text.trim();
+  if (hookText) {
+    const hookEnd = Math.min(args.hook!.durationSec, Math.max(0.5, args.clipEnd - args.clipStart));
+    events.push(`Dialogue: 1,${assTime(0)},${assTime(hookEnd)},Hook,,0,0,0,,${escapeAss(hookText)}`);
+  }
   for (const chunk of chunks) {
     for (let i = 0; i < chunk.length; i++) {
       const w = chunk[i]!;

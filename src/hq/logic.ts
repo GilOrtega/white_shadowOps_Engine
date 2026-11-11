@@ -139,6 +139,45 @@ export function streak(s: HqState, today: string): number {
   return n;
 }
 
+// --- medidor "Rapo a la 0": qué tan en riesgo está el día de hoy ----------------
+export type DangerLevel = "cumplido" | "ok" | "atento" | "peligro";
+export interface DangerInfo {
+  level: DangerLevel;
+  /** 0 = tranquilo, 100 = el día se pierde. */
+  pct: number;
+  title: string;
+  detail: string;
+  /** Horas que quedan para cerrar el día (hasta medianoche). */
+  hoursLeft: number;
+}
+
+/**
+ * Riesgo del día según la hora y lo que falta. Reglas fijas para que sea predecible:
+ * sin comidas a las 14 h o sin entrenar a las 18 h → atento; a las 20/21 h → peligro.
+ * Pasarse de calorías con el día ya registrado = peligro (ese día ya no cuenta).
+ */
+export function dangerInfo(s: HqState, today: string, hour: number): DangerInfo {
+  const hoursLeft = Math.max(0, 24 - hour);
+  const required = missionsFor(s, today).filter((m) => m.required);
+  const left = required.filter((m) => !m.done);
+  if (left.length === 0) return { level: "cumplido", pct: 0, title: "Día asegurado", detail: "La máquina se queda guardada hoy.", hoursLeft };
+
+  const d = dayOf(s, today);
+  const over = d.meals.length >= MIN_MEALS && kcalOf(d) > s.profile.calorieTarget;
+  if (over) return { level: "peligro", pct: 100, title: "Te pasaste de calorías", detail: "Hoy ya no cuenta como cumplido. Mañana se retoma normal, sin compensar.", hoursLeft };
+
+  const noMeals = left.some((m) => m.id === "meals");
+  const noTrain = left.some((m) => m.id === "train");
+  const late = (noMeals && hour >= 20) || (noTrain && hour >= 21);
+  const warn = (noMeals && hour >= 14) || (noTrain && hour >= 18);
+  const base = Math.round((hour / 24) * (left.length / required.length) * 100);
+  const pct = late ? Math.max(base, 85) : warn ? Math.max(base, 60) : Math.min(base, 45);
+  const what = left.filter((m) => !(m.id === "kcal" && noMeals)).map((m) => (m.id === "train" ? "entrenar" : m.id === "meals" ? "registrar comidas" : "cuidar calorías")).join(" y ");
+  if (late) return { level: "peligro", pct, title: `Quedan ${hoursLeft} h`, detail: `Te falta ${what}. Si hoy se cae, la máquina se acerca.`, hoursLeft };
+  if (warn) return { level: "atento", pct, title: "Vas tarde", detail: `Te falta ${what}. Todavía alcanzas.`, hoursLeft };
+  return { level: "ok", pct, title: "En tiempo", detail: `Te falta ${what}. Primero lo difícil.`, hoursLeft };
+}
+
 export const XP = { day: 100, clip: 25, weight: 10, perLevel: 300 } as const;
 
 export function progress(s: HqState) {

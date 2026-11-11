@@ -1,14 +1,17 @@
 /**
  * Renderiza los clips que encontró el Miner.
- *   npx tsx scripts/render.ts <video.mp4> <transcript.json> <clips.json> [--layout blur-fill|center-crop|split] [--out ./renders]
+ *   npx tsx scripts/render.ts <video.mp4> <transcript.json> <clips.json> [--layout blur-fill|center-crop|split] [--out ./renders] [--force]
  *
  * transcript.json: formato Transcript (con `words` por segmento para subtítulos).
- * clips.json:      salida de scripts/mine.ts.
+ * clips.json:      salida de scripts/mine.ts, o el "Plan de render" que exporta el Estudio de shorts
+ *                  (solo clips aprobados, con su gancho de 3 s y la altura de subtítulos que elegiste).
  */
 import { readFile } from "node:fs/promises";
 import { basename } from "node:path";
 import { isEngineError, TranscriptSchema, type Clip } from "../src/engine";
-import { probeVideo, renderClip, type Layout } from "../src/engine/media";
+import { probeVideo, renderClip, SubtitleStyleSchema, type Layout } from "../src/engine/media";
+
+type PlanRender = Record<string, { hook?: string; hookSec?: number; marginV?: number }>;
 
 const LAYOUTS: Record<string, Layout> = {
   "center-crop": { mode: "center-crop", focusX: 0.5 },
@@ -29,7 +32,11 @@ async function main() {
   const outDir = arg("--out") ?? "./renders";
 
   const transcript = TranscriptSchema.parse(JSON.parse(await readFile(transcriptFile, "utf8")));
-  const { clips } = JSON.parse(await readFile(clipsFile, "utf8")) as { clips: Clip[] };
+  const file = JSON.parse(await readFile(clipsFile, "utf8")) as { kind?: string; clips: Clip[]; render?: PlanRender };
+  const { clips } = file;
+  const plan: PlanRender = file.kind === "wso.render-plan" ? file.render ?? {} : {};
+  if (file.kind === "wso.render-plan") console.log(`Plan del Estudio: ${clips.length} clips aprobados (con gancho y subtítulos ajustados)`);
+  const force = rest.includes("--force") || file.kind === "wso.render-plan";
   const words = transcript.segments.flatMap((s) => s.words ?? []);
   if (words.length === 0) console.warn("⚠ La transcripción no trae `words`: se renderiza sin subtítulos.");
 
@@ -41,7 +48,11 @@ async function main() {
   const jobId = basename(video).replace(/\W+/g, "-").slice(0, 48);
   for (const [i, clip] of clips.entries()) {
     const res = await renderClip(
-      { jobId, sourcePath: video, clip, words, layout, outDir },
+      {
+        jobId, sourcePath: video, clip, words, layout, outDir, force,
+        subtitles: SubtitleStyleSchema.parse({ ...(plan[clip.id]?.marginV !== undefined ? { marginV: plan[clip.id]!.marginV } : {}) }),
+        hook: plan[clip.id]?.hook ? { text: plan[clip.id]!.hook!, durationSec: plan[clip.id]!.hookSec ?? 2.8 } : null,
+      },
       { probe, signal: ac.signal, onProgress: (p) => process.stdout.write(`\r  [${i + 1}/${clips.length}] ${(p * 100).toFixed(0)}%   `) },
     );
     console.log(`\r  [${i + 1}/${clips.length}] ${res.cached ? "caché" : "ok"} → ${res.outputPath} (${(res.bytes / 1e6).toFixed(1)} MB)`);

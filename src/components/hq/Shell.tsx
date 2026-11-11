@@ -15,9 +15,12 @@ const NAV = [
   { href: "/plan", label: "Plan", icon: "target" },
   { href: "/progreso", label: "Progreso", icon: "chart" },
   { href: "/bitacora", label: "Bitácora", icon: "image" },
-  { href: "/engine", label: "Shorts", icon: "video" },
+  { href: "/crew", label: "Shorts", icon: "sparkles" },
+  { href: "/engine", label: "Motor", icon: "video" },
   { href: "/ajustes", label: "Ajustes", icon: "gear" },
 ] as const;
+/** En el celular no cabe todo: el Motor se abre desde el Estudio. */
+const TABS = NAV.filter((n) => n.href !== "/engine");
 
 /** El brillo del vidrio sigue al cursor: una sola escucha para toda la app. */
 function usePointerGlow() {
@@ -135,7 +138,7 @@ export function Shell({ children }: { children: ReactNode }) {
         className="glass glass-strong fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 rounded-[22px] md:hidden"
       >
         <div className="grid grid-cols-6 px-1">
-          {NAV.map((n) => {
+          {TABS.map((n) => {
             const on = active(n.href);
             return (
               <Link

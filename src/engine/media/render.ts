@@ -58,7 +58,7 @@ export async function renderClip(input: RenderJobInput, deps: RenderDeps = {}): 
   const duration = endTime - job.clip.startTime;
 
   let assFile: string | undefined;
-  if (job.subtitles && job.words.length > 0) {
+  if (job.subtitles && (job.words.length > 0 || job.hook)) {
     assFile = `${job.clip.id}.ass`;
     const ass = buildAss({
       words: job.words,
@@ -67,6 +67,7 @@ export async function renderClip(input: RenderJobInput, deps: RenderDeps = {}): 
       style: job.subtitles,
       width: job.output.width,
       height: job.output.height,
+      hook: job.hook,
     });
     await writeFile(join(workDir, assFile), ass, "utf8");
   }
