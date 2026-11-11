@@ -1,53 +1,45 @@
 @import "tailwindcss";
 
-/* Tema estilo iOS: claro y oscuro siguen al sistema. `ink` y `lime` son fijos (texto sobre verde). */
+/*
+ * WhiteShadow — sistema visual "Frost".
+ * Modo oscuro único: pizarra profunda con dos auroras de luz detrás del vidrio.
+ * Lima = progreso y logros (la banda de Sombra). Iris = IA y agentes.
+ */
 :root {
-  color-scheme: light dark;
-  --bg: #f2f2f7;
-  --panel: #ffffff;
-  --well: #f2f2f7;
-  --line: #e5e5ea;
-  --edge: #c7c7cc;
-  --mute: #636366;
-  --fg: #000000;
-  --accent: #3f6b00;
-  --amber: #a04a00;
-  --sky: #0a60c5;
-  --danger: #c4281c;
-  --chart-trend: #4d7c0f;
-  --chart-daily: #2563eb;
-  --ghost: #ffffff;
-  --ghost-shade: #dfe3ea;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #000000;
-    --panel: #1c1c1e;
-    --well: #2c2c2e;
-    --line: #38383a;
-    --edge: #48484a;
-    --mute: #a1a1a8;
-    --fg: #ffffff;
-    --accent: #c6f432;
-    --amber: #ffb15c;
-    --sky: #8cc1ff;
-    --danger: #ff9a8f;
-    --chart-trend: #7fa320;
-    --chart-daily: #5590f2;
-    --ghost: #f4f6f8;
-    --ghost-shade: #c9ced8;
-  }
+  color-scheme: dark;
+  --bg: #090b10;
+  --bg-2: #0d1018;
+  --panel: rgb(22 25 34 / 0.58);
+  --panel-solid: #151821;
+  --well: rgb(255 255 255 / 0.045);
+  --line: rgb(255 255 255 / 0.075);
+  --edge: rgb(255 255 255 / 0.14);
+  --mute: #9aa0ad;
+  --fg: #f2f4f8;
+  --accent: #c6f432;
+  --iris: #8e7cff;
+  --amber: #ffb45c;
+  --sky: #7cc4ff;
+  --danger: #ff8a80;
+  --chart-trend: #c6f432;
+  --chart-daily: #8e7cff;
+  --ghost: #f4f6fb;
+  --ghost-shade: #c4cada;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 @theme inline {
   --color-bg: var(--bg);
   --color-panel: var(--panel);
+  --color-panel-solid: var(--panel-solid);
   --color-well: var(--well);
   --color-line: var(--line);
   --color-edge: var(--edge);
   --color-mute: var(--mute);
   --color-fg: var(--fg);
   --color-accent: var(--accent);
+  --color-iris: var(--iris);
   --color-amber: var(--amber);
   --color-sky: var(--sky);
   --color-danger: var(--danger);
@@ -55,33 +47,130 @@
   --color-lime: #c6f432;
   --color-ghost: var(--ghost);
   --color-ghost-shade: var(--ghost-shade);
-  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
-  --font-display: ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI Variable Text", "Segoe UI", Roboto, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter Display", "Segoe UI Variable Display", "Segoe UI", Roboto, sans-serif;
 }
 
 html {
   -webkit-text-size-adjust: 100%;
+  background: var(--bg);
 }
 body {
-  background: var(--bg);
   color: var(--fg);
   font-family: var(--font-sans);
+  font-feature-settings: "ss01", "cv11";
   -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  background: var(--bg);
 }
+
+/* Luz ambiental fija detrás de todo el vidrio. */
+.wso-ambient {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(60rem 40rem at 12% -10%, rgb(142 124 255 / 0.22), transparent 60%),
+    radial-gradient(48rem 36rem at 105% 15%, rgb(198 244 50 / 0.1), transparent 62%),
+    radial-gradient(50rem 40rem at 50% 115%, rgb(124 196 255 / 0.1), transparent 60%),
+    linear-gradient(180deg, var(--bg-2), var(--bg) 40%);
+}
+.wso-ambient::after {
+  /* grano finísimo para que el degradado no haga bandas */
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
 :focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--iris);
   outline-offset: 2px;
 }
-/* Respuesta al toque, como un botón nativo. */
-button, a {
-  transition: transform 0.12s ease, opacity 0.12s ease;
+::selection {
+  background: rgb(142 124 255 / 0.4);
 }
-button:active:not(:disabled), a:active {
+
+@layer components {
+  /* Vidrio esmerilado: blur + borde de 1px + filo de luz arriba. */
+  .glass {
+    position: relative;
+    isolation: isolate;
+    background: linear-gradient(180deg, rgb(255 255 255 / 0.055), rgb(255 255 255 / 0.015)), var(--panel);
+    border: 1px solid var(--line);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.07),
+      0 1px 2px rgb(0 0 0 / 0.3),
+      0 18px 40px -18px rgb(0 0 0 / 0.55);
+    -webkit-backdrop-filter: blur(22px) saturate(160%);
+    backdrop-filter: blur(22px) saturate(160%);
+  }
+  /* Brillo que sigue al cursor (las variables las pone <PointerGlow/>). */
+  .glass::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    z-index: -1;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.35s var(--ease-out);
+    background: radial-gradient(28rem circle at var(--mx, 50%) var(--my, 0%), rgb(255 255 255 / 0.07), transparent 45%);
+  }
+  .glass:hover::before {
+    opacity: 1;
+  }
+  .glass-strong {
+    background: linear-gradient(180deg, rgb(255 255 255 / 0.07), rgb(255 255 255 / 0.02)), rgb(18 20 28 / 0.78);
+  }
+
+  /*
+   * Vidrio roto: grietas finas de luz que cruzan el panel. Solo se usa en
+   * "Tu día" y en el dock de Sombra para que sea memorable, no ruido.
+   */
+  .shattered::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background:
+      linear-gradient(118deg, transparent 47.8%, rgb(255 255 255 / 0.11) 48%, transparent 48.25%),
+      linear-gradient(64deg, transparent 63.7%, rgb(255 255 255 / 0.08) 63.9%, transparent 64.1%),
+      linear-gradient(151deg, transparent 71.6%, rgb(255 255 255 / 0.07) 71.8%, transparent 72%),
+      linear-gradient(32deg, transparent 22.6%, rgb(255 255 255 / 0.06) 22.8%, transparent 23%),
+      conic-gradient(from 210deg at 68% 38%, transparent 0 8deg, rgb(255 255 255 / 0.05) 8deg 9deg, transparent 9deg 74deg, rgb(255 255 255 / 0.045) 74deg 75deg, transparent 75deg);
+    mask-image: radial-gradient(120% 90% at 70% 30%, #000 30%, transparent 85%);
+  }
+
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Respuesta táctil, como un control nativo de macOS. */
+button,
+a {
+  transition:
+    transform 0.16s var(--ease-out),
+    background-color 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    opacity 0.16s ease;
+}
+button:active:not(:disabled),
+a:active {
   transform: scale(0.97);
-  opacity: 0.85;
 }
-.no-scrollbar { scrollbar-width: none; }
-.no-scrollbar::-webkit-scrollbar { display: none; }
 
 @keyframes wso-pop {
   0% { transform: translateY(0) rotate(0deg); opacity: 1; }
@@ -103,19 +192,45 @@ button:active:not(:disabled), a:active {
   0%, 100% { transform: scaleX(1); opacity: 0.22; }
   50% { transform: scaleX(0.86); opacity: 0.14; }
 }
+/* Entrada de pantalla: un solo momento orquestado (blur → nítido). */
 @keyframes wso-in {
-  from { transform: translateY(6px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from { transform: translateY(8px) scale(0.995); opacity: 0; filter: blur(6px); }
+  to { transform: none; opacity: 1; filter: blur(0); }
 }
+@keyframes wso-bubble {
+  from { transform: translateY(6px) scale(0.96); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes wso-sheet {
+  from { transform: translateY(12px) scale(0.98); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes wso-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes wso-aura {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.08); }
+}
+
 .wso-float { animation: wso-float 3.2s ease-in-out infinite; }
 .wso-bounce { animation: wso-bounce 0.9s ease-in-out infinite; }
 .wso-shadow { animation: wso-shadow 3.2s ease-in-out infinite; transform-origin: center; }
 .wso-confetti { animation: wso-pop 1.1s ease-out forwards; }
 .wso-pulse { animation: wso-pulse 2s ease-in-out infinite; }
-.wso-in { animation: wso-in 0.22s ease-out; }
-.wso-ring { transition: stroke-dashoffset 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.wso-in { animation: wso-in 0.45s var(--ease-out) both; }
+.wso-bubble { animation: wso-bubble 0.32s var(--ease-spring) both; transform-origin: bottom right; }
+.wso-sheet { animation: wso-sheet 0.28s var(--ease-out) both; }
+.wso-fade { animation: wso-fade 0.2s ease both; }
+.wso-aura { animation: wso-aura 4s ease-in-out infinite; }
+.wso-ring { transition: stroke-dashoffset 0.8s var(--ease-out); }
+
 @media (prefers-reduced-motion: reduce) {
   .wso-confetti { display: none; }
-  .wso-pulse, .wso-bounce, .wso-float, .wso-shadow, .wso-in { animation: none; }
-  .wso-ring, button, a { transition: none; }
+  .wso-pulse, .wso-bounce, .wso-float, .wso-shadow, .wso-in, .wso-bubble, .wso-sheet, .wso-fade, .wso-aura { animation: none; }
+  .wso-ring, button, a, .glass::before { transition: none; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .glass { background: var(--panel-solid); backdrop-filter: none; -webkit-backdrop-filter: none; }
 }

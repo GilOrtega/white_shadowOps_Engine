@@ -6,6 +6,7 @@ import * as L from "@/hq/logic";
 import type { HqState, Plan } from "@/hq/schemas";
 import { actions, useHq } from "@/hq/store";
 import { Bar, btn, Card, H2, Loading, PageTitle } from "./ui";
+import { GhostTip } from "./Journal";
 
 export function PlanInterview() {
   const hq = useHq();
@@ -13,7 +14,7 @@ export function PlanInterview() {
   return <PlanView hq={hq} />;
 }
 
-const bubble = "max-w-xl self-start rounded-[20px] rounded-bl-md bg-well px-4 py-2.5 text-[16px] leading-snug";
+const bubble = "max-w-xl self-start rounded-[20px] rounded-bl-md border border-white/[0.07] bg-white/[0.06] px-4 py-2.5 text-[16px] leading-snug";
 const mine = "max-w-sm self-end rounded-[20px] rounded-br-md bg-lime px-4 py-2.5 text-[16px] font-medium text-ink";
 
 export function PlanView({ hq, initialAnswers = [] }: { hq: HqState; initialAnswers?: string[] }) {
@@ -28,6 +29,7 @@ export function PlanView({ hq, initialAnswers = [] }: { hq: HqState; initialAnsw
   return (
     <div className="flex flex-col gap-6">
       <PageTitle title="Plan de ataque" sub="El Estratega arma tu semana" />
+      <GhostTip name={hq.profile.mascotName} text={hq.plan ? "El plan solo se cambia con 2 semanas de datos y si cumpliste. Lo que no se cumple no se ajusta: se arregla la constancia." : "4 preguntas y te armo la semana completa. Después cada día te dice qué toca."} />
 
       {!interviewing && hq.plan ? (
         <Card aria-labelledby="plan-h" className="flex flex-col gap-4">
@@ -82,7 +84,7 @@ function Week({ plan }: { plan: Plan }) {
   return (
     <ol aria-label="Semana" className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
       {L.planWeek(plan).map((d) => (
-        <li key={d.day} className={`flex flex-col gap-1 rounded-2xl p-3 ${d.gym ? "bg-accent/12" : "bg-well"}`}>
+        <li key={d.day} className={`flex flex-col gap-1 rounded-2xl p-3 ${d.gym ? "border border-lime/25 bg-lime/10" : "border border-white/[0.06] bg-white/[0.03]"}`}>
           <span className="text-xs font-semibold text-mute">{d.day}{d.gym ? " · gym" : ""}</span>
           <span className="text-sm font-semibold leading-snug">{d.main}</span>
           {d.extra && <span className="text-xs leading-snug text-mute">{d.extra}</span>}

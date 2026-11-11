@@ -8,8 +8,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Tu reto, tu plan de ataque y tus agentes.",
     start_url: "/",
     display: "standalone",
-    background_color: "#000000",
-    theme_color: "#000000",
+    background_color: "#090b10",
+    theme_color: "#090b10",
     lang: "es-MX",
     icons: [
       { src: "/icon.svg", sizes: "any", type: "image/svg+xml" },

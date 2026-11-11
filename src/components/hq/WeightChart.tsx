@@ -66,15 +66,15 @@ export function WeightChart({ series, goalKg }: { series: WeightPoint[]; goalKg:
           {h && <line x1={x(h.date)} x2={x(h.date)} y1={PAD.t} y2={H - PAD.b} className="stroke-edge" strokeWidth="1" />}
           <path d={path} fill="none" style={{ stroke: TREND }} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
           {series.map((p, i) => (
-            <circle key={p.date} cx={x(p.date)} cy={y(p.kg)} r={hover === i ? 5.5 : 4} style={{ fill: DAILY }} className="stroke-panel" strokeWidth="2" />
+            <circle key={p.date} cx={x(p.date)} cy={y(p.kg)} r={hover === i ? 5.5 : 4} style={{ fill: DAILY }} className="stroke-panel-solid" strokeWidth="2" />
           ))}
-          <circle cx={x(last.date)} cy={y(last.trend)} r="4" style={{ fill: TREND }} className="stroke-panel" strokeWidth="2" />
+          <circle cx={x(last.date)} cy={y(last.trend)} r="4" style={{ fill: TREND }} className="stroke-panel-solid" strokeWidth="2" />
           {(goalKg === null || Math.abs(y(goalKg) - y(last.trend)) > 14) && (
             <text x={x(last.date) + 8} y={y(last.trend) + 4} fontSize="13" fontWeight="600" className="fill-fg">{last.trend.toFixed(1)} kg</text>
           )}
         </svg>
         {h && (
-          <div role="status" className="pointer-events-none absolute top-2 rounded-xl bg-well px-3 py-2 text-xs shadow-lg"
+          <div role="status" className="pointer-events-none glass glass-strong absolute top-2 rounded-xl px-3 py-2 text-xs"
             style={x(h.date) > W / 2 ? { right: `${100 - (x(h.date) / W) * 100 + 2}%` } : { left: `${(x(h.date) / W) * 100 + 2}%` }}>
             <p className="mb-1 text-mute">{fmtDay(h.date)}</p>
             <p className="flex items-center gap-2"><span aria-hidden="true" className="inline-block h-0.5 w-3 rounded" style={{ background: TREND }} /><b className="text-sm">{h.trend.toFixed(1)} kg</b><span className="text-mute">tendencia</span></p>

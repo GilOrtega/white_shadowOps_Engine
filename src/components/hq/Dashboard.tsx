@@ -10,6 +10,7 @@ import { actions, parseNumber, useHq } from "@/hq/store";
 import { useHour, useToday } from "@/hq/useToday";
 import { ChallengeMap, Hero } from "./Hero";
 import { Mascot } from "./Mascot";
+import { TodayCapture } from "./Journal";
 import { MealLogger } from "./MealLogger";
 import { Avatar, Bar, btn, Card, Check, group, H2, Icon, input, Loading, PageTitle, Pill, row } from "./ui";
 
@@ -43,15 +44,18 @@ export function DashboardView({ hq, today, hour = 12 }: { hq: HqState; today: st
         <Link href="/ajustes" aria-label="Tu perfil y ajustes" className="mb-1 shrink-0">
           {hq.profile.photo ? (
             // eslint-disable-next-line @next/next/no-img-element -- foto local en data URL
-            <img src={hq.profile.photo} alt="" width={44} height={44} className="h-11 w-11 rounded-full object-cover" />
+            <img src={hq.profile.photo} alt="" width={44} height={44} className="h-11 w-11 rounded-full object-cover ring-1 ring-white/15" />
           ) : (
-            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-panel font-display text-lg font-bold text-accent">{hq.profile.name.charAt(0)}</span>
+            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/[0.08] font-display text-lg font-bold text-lime ring-1 ring-white/10">{hq.profile.name.charAt(0)}</span>
           )}
         </Link>
       } />
       <Hero hq={hq} today={today} />
-      <Mascot hq={hq} today={today} hour={hour} />
-      <p className="rounded-2xl bg-panel px-4 py-3 text-[15px] leading-snug"><span className="font-semibold text-accent">Coach.</span> {L.coachNote(hq, today)}</p>
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+        <Mascot hq={hq} today={today} hour={hour} />
+        <TodayCapture today={today} />
+      </div>
+      <p className="glass rounded-2xl px-4 py-3 text-[15px] leading-snug"><span className="font-semibold text-iris">Coach.</span> {L.coachNote(hq, today)}</p>
 
       <section aria-label="Resumen" className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
         <Kpi label="Peso (tendencia 7 días)" value={L.fmtKg(trend)} pct={null}
@@ -71,7 +75,7 @@ export function DashboardView({ hq, today, hour = 12 }: { hq: HqState; today: st
       </div>
 
       <div className="grid items-start gap-4 lg:grid-cols-2">
-        <MealLogger hq={hq} today={today} />
+        <div id="comidas" className="scroll-mt-6"><MealLogger hq={hq} today={today} /></div>
         <CoachCard hq={hq} today={today} />
       </div>
 
@@ -84,9 +88,9 @@ export function DashboardView({ hq, today, hour = 12 }: { hq: HqState; today: st
 
 function Kpi({ label, value, sub, pct, tone }: { label: string; value: string; sub: string; pct: number | null; tone?: "accent" | "lime" | "sky" | "amber" }) {
   return (
-    <section className="flex flex-col gap-1.5 rounded-3xl bg-panel p-4">
+    <section className="glass flex flex-col gap-1.5 rounded-[20px] p-4">
       <span className="text-xs text-mute">{label}</span>
-      <span className="font-display text-[26px] font-bold leading-tight tracking-tight">{value}</span>
+      <span className="tnum font-display text-[26px] font-bold leading-tight tracking-[-0.03em]">{value}</span>
       {pct !== null && <Bar pct={pct} tone={tone} label={label} />}
       <span className="text-xs text-mute">{sub}</span>
     </section>
@@ -100,10 +104,10 @@ function Missions({ hq, today }: { hq: HqState; today: string }) {
   const complete = done === required.length;
   const toggle = (id: L.Mission["id"], next: boolean) => (id === "train" ? actions.setTraining(today, next) : actions.setClip(today, next));
   return (
-    <Card aria-labelledby="mis-h" className="flex flex-col gap-3">
+    <Card id="misiones" aria-labelledby="mis-h" className="flex scroll-mt-6 flex-col gap-3">
       <div className="flex items-baseline justify-between gap-3">
         <H2 id="mis-h">Plan de ataque de hoy</H2>
-        <span className="text-sm font-semibold text-accent">{done} de {required.length}</span>
+        <span className="tnum text-sm font-semibold text-lime">{done} de {required.length}</span>
       </div>
       <ul className={group}>
         {missions.map((m) => {
@@ -127,7 +131,7 @@ function Missions({ hq, today }: { hq: HqState; today: string }) {
           );
         })}
       </ul>
-      <p role="status" className={`text-sm ${complete ? "font-semibold text-accent" : "text-mute"}`}>
+      <p role="status" className={`text-sm ${complete ? "font-semibold text-lime" : "text-mute"}`}>
         {complete ? `Día cumplido: +${L.XP.day} XP y la racha sigue.` : "Las que dicen “sola” se marcan al registrar tus comidas."}
       </p>
     </Card>
@@ -227,7 +231,8 @@ function CoachCard({ hq, today }: { hq: HqState; today: string }) {
       ) : <p className="text-sm text-mute">{t.detail}</p>}
       <p className="text-xs text-mute">Si un ejercicio te da dolor agudo o en la articulación, se para y se revisa con un profesional.</p>
       <div className="mt-1 flex flex-col gap-2 border-t border-line pt-3">
-        <button type="button" className={`${btn.ghost} self-start`} disabled={busy} onClick={() => void ask()}>
+        <button type="button" className={`${btn.ai} self-start`} disabled={busy} onClick={() => void ask()}>
+          <Icon name="sparkle" size={16} />
           {busy ? "El Coach está revisando tus 14 días…" : "Pedir análisis al Coach (IA)"}
         </button>
         {msg && <p role="status" className="text-sm text-amber">{msg}</p>}
@@ -235,7 +240,7 @@ function CoachCard({ hq, today }: { hq: HqState; today: string }) {
           <div role="status" className="flex flex-col gap-2 rounded-2xl bg-well p-4 text-[15px]">
             <p className="font-display text-base font-semibold">{advice.headline}</p>
             <ul className="flex list-inside list-disc flex-col gap-1 text-fg/85">{advice.bullets.map((b, i) => <li key={i}>{b}</li>)}</ul>
-            <p><span className="font-semibold text-accent">Hoy:</span> {advice.actionToday}</p>
+            <p><span className="font-semibold text-lime">Hoy:</span> {advice.actionToday}</p>
             <p className="text-xs text-mute">{ADJUST[advice.adjustment]}{advice.guardrail ? ` · ${advice.guardrail}` : ""}</p>
           </div>
         )}
@@ -254,7 +259,7 @@ function Team({ hq, today }: { hq: HqState; today: string }) {
       </div>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {cards.map((a) => (
-          <article key={a.id} className="flex flex-col gap-3 rounded-3xl bg-panel p-4">
+          <article key={a.id} className="glass flex flex-col gap-3 rounded-[20px] p-4">
             <div className="flex items-center justify-between gap-2">
               <div className="flex min-w-0 items-center gap-3">
                 <Avatar name={a.name} />
@@ -266,7 +271,7 @@ function Team({ hq, today }: { hq: HqState; today: string }) {
               <Pill status={a.status}>{a.statusLabel}</Pill>
             </div>
             <p className="text-sm leading-snug text-fg/85">{a.task}</p>
-            <Bar pct={a.pct} tone={a.status === "done" ? "sky" : a.status === "needs" && a.pct > 0 ? "amber" : "accent"} label={`Avance de ${a.name}`} />
+            <Bar pct={a.pct} tone={a.status === "done" ? "accent" : a.status === "needs" && a.pct > 0 ? "amber" : "iris"} label={`Avance de ${a.name}`} />
           </article>
         ))}
       </div>

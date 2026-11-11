@@ -26,7 +26,7 @@ export default function EnginePage() {
           <p className="max-w-2xl text-sm text-mute">El motor que convierte un video largo en shorts ya funciona, pero por ahora corre en tu compu, no desde esta pantalla.</p>
         </header>
 
-        <section aria-labelledby="st-h" className="flex flex-col gap-3 rounded-3xl bg-panel p-5">
+        <section aria-labelledby="st-h" className="flex flex-col gap-3 glass rounded-[22px] p-5">
           <h2 id="st-h" className="text-[20px] font-semibold tracking-tight">Qué está hecho</h2>
           <ul className="flex flex-col gap-2">
             {STAGES.map((s) => (
@@ -52,7 +52,7 @@ async function MinerDemo() {
   await connection(); // se calcula en cada visita
   const res = await mineClips(demoLlm, demoTranscript(), { context: "demo" });
   return (
-    <section aria-labelledby="demo-h" className="flex flex-col gap-3 rounded-3xl bg-panel p-5">
+    <section aria-labelledby="demo-h" className="flex flex-col gap-3 glass rounded-[22px] p-5">
       <h2 id="demo-h" className="text-[20px] font-semibold tracking-tight">Demostración con datos de prueba</h2>
       <p className="text-sm text-mute">No es un video tuyo: es una transcripción inventada de 40 minutos para enseñar cómo elige y descarta el Miner. Encontró {res.clips.length} clips y descartó {res.dropped.length}.</p>
       <ul className="grid gap-2 sm:grid-cols-2">

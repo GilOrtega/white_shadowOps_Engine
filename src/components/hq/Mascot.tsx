@@ -74,7 +74,7 @@ function context(hq: HqState, today: string): MascotRequest["context"] {
   };
 }
 
-const theirs = "self-start rounded-[20px] rounded-bl-md bg-well px-4 py-2.5 text-[16px] leading-snug";
+const theirs = "self-start rounded-[20px] rounded-bl-md border border-white/[0.07] bg-white/[0.06] px-4 py-2.5 text-[16px] leading-snug";
 const mine = "max-w-[85%] self-end rounded-[20px] rounded-br-md bg-lime px-4 py-2.5 text-[16px] font-medium leading-snug text-ink";
 
 export function Mascot({ hq, today, hour }: { hq: HqState; today: string; hour: number }) {
@@ -111,13 +111,13 @@ export function Mascot({ hq, today, hour }: { hq: HqState; today: string; hour: 
   }
 
   return (
-    <section aria-label={`${name}, tu mascota`} className="flex flex-col gap-4 rounded-3xl bg-panel p-5">
+    <section id="sombra" aria-label={`${name}, tu mascota`} className="glass flex scroll-mt-6 flex-col gap-4 rounded-[22px] p-5">
       <div className="flex items-end gap-3">
-        <div className="flex h-[8.5rem] w-[7.5rem] shrink-0 items-end justify-center rounded-[28px] bg-accent/12 pb-1">
+        <div className="relative flex h-[8.5rem] w-[7.5rem] shrink-0 items-end justify-center overflow-hidden rounded-[26px] bg-gradient-to-b from-iris/30 via-iris/10 to-transparent pb-1 ring-1 ring-inset ring-iris/25">
           <MascotFace mood={mood ?? opening.mood} size={108} />
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-1.5 pb-1">
-          <p className="pl-1 text-[13px] font-semibold text-mute">{name}</p>
+          <p className="pl-1 text-[13px] font-semibold text-iris">{name}</p>
           <p className={theirs}>{opening.text}</p>
         </div>
       </div>
@@ -132,7 +132,7 @@ export function Mascot({ hq, today, hour }: { hq: HqState; today: string; hour: 
       </div>
       <form onSubmit={send} className="flex gap-2">
         <input aria-label={`Escríbele a ${name}`} className={`${input} rounded-full px-4`} value={text} onChange={(e) => setText(e.target.value)} maxLength={300} placeholder={`Escríbele a ${name}`} />
-        <button type="submit" aria-label="Enviar" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-lime text-ink disabled:opacity-40" disabled={busy || !text.trim()}>
+        <button type="submit" aria-label="Enviar" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-lime text-ink shadow-[0_6px_18px_-6px_rgb(198_244_50/0.6)] disabled:opacity-40 disabled:shadow-none" disabled={busy || !text.trim()}>
           <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19V5M5.5 11.5 12 5l6.5 6.5" /></svg>
         </button>
       </form>

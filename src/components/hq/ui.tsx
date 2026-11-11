@@ -3,11 +3,11 @@ import type { AgentStatus } from "@/hq/logic";
 
 /** Tarjeta plana sobre el fondo, como las listas agrupadas del sistema. */
 export function Card({ className = "", ...p }: ComponentProps<"section">) {
-  return <section {...p} className={`rounded-3xl bg-panel p-5 ${className}`} />;
+  return <section {...p} className={`glass rounded-[22px] p-5 ${className}`} />;
 }
 
 export function H2({ children, id }: { children: ReactNode; id?: string }) {
-  return <h2 id={id} className="text-[20px] font-semibold tracking-tight">{children}</h2>;
+  return <h2 id={id} className="font-display text-[19px] font-semibold tracking-[-0.015em]">{children}</h2>;
 }
 
 /** Título grande de pantalla. */
@@ -16,28 +16,28 @@ export function PageTitle({ title, sub, right }: { title: string; sub?: string; 
     <header className="flex items-end justify-between gap-3">
       <div className="min-w-0">
         {sub && <p className="text-[13px] font-medium text-mute">{sub}</p>}
-        <h1 className="text-[34px] font-bold leading-tight tracking-tight">{title}</h1>
+        <h1 className="font-display text-[38px] font-bold leading-[1.05] tracking-[-0.03em] md:text-[44px]">{title}</h1>
       </div>
       {right}
     </header>
   );
 }
 
-export function Bar({ pct, tone = "accent", label }: { pct: number; tone?: "accent" | "lime" | "sky" | "amber"; label: string }) {
-  const color = tone === "sky" ? "bg-sky" : tone === "amber" ? "bg-amber" : "bg-accent";
+export function Bar({ pct, tone = "accent", label }: { pct: number; tone?: "accent" | "lime" | "sky" | "amber" | "iris"; label: string }) {
+  const color = tone === "sky" ? "bg-sky" : tone === "amber" ? "bg-amber" : tone === "iris" ? "bg-iris" : "bg-accent";
   const v = Math.max(0, Math.min(100, Math.round(pct)));
   return (
-    <div role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={v} className="h-1.5 overflow-hidden rounded-full bg-edge/60">
-      <div className={`h-full rounded-full ${color}`} style={{ width: `${v}%` }} />
+    <div role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={v} className="h-1.5 overflow-hidden rounded-full bg-white/[0.07]">
+      <div className={`h-full rounded-full ${color} shadow-[0_0_12px_currentColor] transition-[width] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]`} style={{ width: `${v}%` }} />
     </div>
   );
 }
 
 const PILL: Record<AgentStatus, string> = {
-  working: "bg-accent/15 text-accent",
-  needs: "bg-amber/15 text-amber",
-  done: "bg-sky/15 text-sky",
-  idle: "bg-edge/40 text-mute",
+  working: "bg-iris/15 text-iris ring-1 ring-inset ring-iris/25",
+  needs: "bg-amber/12 text-amber ring-1 ring-inset ring-amber/25",
+  done: "bg-accent/12 text-accent ring-1 ring-inset ring-accent/25",
+  idle: "bg-white/[0.05] text-mute ring-1 ring-inset ring-white/10",
 };
 export function Pill({ status, children }: { status: AgentStatus; children: ReactNode }) {
   return <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${PILL[status]}`}>{children}</span>;
@@ -45,26 +45,30 @@ export function Pill({ status, children }: { status: AgentStatus; children: Reac
 
 export function Avatar({ name, strong = false }: { name: string; strong?: boolean }) {
   return (
-    <span aria-hidden="true" className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-display text-[17px] font-bold ${strong ? "bg-lime text-ink" : "bg-well text-fg"}`}>
+    <span aria-hidden="true" className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-display text-[17px] font-bold ${strong ? "bg-lime text-ink" : "bg-gradient-to-b from-iris/30 to-iris/10 text-fg ring-1 ring-inset ring-iris/30"}`}>
       {name.charAt(0)}
     </span>
   );
 }
 
 export const btn = {
-  primary: "inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-lime px-5 text-[15px] font-semibold text-ink disabled:opacity-40",
-  ghost: "inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-accent/12 px-5 text-[15px] font-semibold text-accent disabled:opacity-40",
-  chip: "inline-flex min-h-11 shrink-0 items-center justify-center rounded-full bg-well px-4 text-[15px] font-medium text-fg",
+  primary:
+    "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-lime px-4.5 text-[15px] font-semibold text-ink shadow-[inset_0_1px_0_rgb(255_255_255/0.45),0_6px_20px_-6px_rgb(198_244_50/0.55)] hover:brightness-105 disabled:opacity-40 disabled:shadow-none",
+  ghost:
+    "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.06] px-4.5 text-[15px] font-semibold text-fg shadow-[inset_0_1px_0_rgb(255_255_255/0.06)] hover:border-white/20 hover:bg-white/[0.1] disabled:opacity-40",
+  ai: "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-iris/30 bg-iris/15 px-4.5 text-[15px] font-semibold text-[#d6cfff] hover:bg-iris/25 disabled:opacity-40",
+  chip: "inline-flex min-h-10 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] px-4 text-[14px] font-medium text-fg hover:border-white/20 hover:bg-white/[0.09]",
 };
-export const input = "min-h-12 w-full rounded-xl bg-well px-3.5 text-[16px] text-fg placeholder:text-mute/70";
+export const input =
+  "min-h-11 w-full rounded-xl border border-white/10 bg-black/25 px-3.5 text-[16px] text-fg shadow-[inset_0_1px_2px_rgb(0_0_0/0.3)] placeholder:text-mute/60 focus:border-iris/60 focus:outline-none focus:ring-4 focus:ring-iris/15";
 
 /** Lista agrupada: filas separadas por una línea fina dentro de un mismo contenedor. */
-export const group = "overflow-hidden rounded-2xl bg-well divide-y divide-line";
-export const row = "flex min-h-[3.75rem] w-full items-center gap-3 px-4 py-2.5 text-left";
+export const group = "overflow-hidden rounded-2xl border border-white/[0.06] bg-black/20 divide-y divide-line";
+export const row = "flex min-h-[3.75rem] w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-white/[0.03]";
 
 export function Check({ done }: { done: boolean }) {
   return (
-    <span aria-hidden="true" className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 ${done ? "border-lime bg-lime" : "border-edge"}`}>
+    <span aria-hidden="true" className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 ${done ? "border-lime bg-lime shadow-[0_0_14px_rgb(198_244_50/0.5)]" : "border-white/20"}`}>
       {done && (
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M5 12.5l4.5 4.5L19 7.5" />
@@ -77,9 +81,9 @@ export function Check({ done }: { done: boolean }) {
 export function Loading() {
   return (
     <div aria-busy="true" aria-label="Cargando" className="grid gap-4">
-      <div className="h-10 w-1/2 animate-pulse rounded-xl bg-panel" />
-      <div className="h-56 animate-pulse rounded-3xl bg-panel" />
-      <div className="h-40 animate-pulse rounded-3xl bg-panel" />
+      <div className="h-10 w-1/2 animate-pulse rounded-xl bg-white/[0.05]" />
+      <div className="h-56 animate-pulse rounded-[22px] bg-white/[0.04]" />
+      <div className="h-40 animate-pulse rounded-[22px] bg-white/[0.04]" />
     </div>
   );
 }
@@ -94,6 +98,16 @@ const paths: Record<string, ReactNode> = {
   shield: <path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z" />,
   x: <path d="M6 6l12 12M18 6L6 18" />,
   chevron: <path d="M9 6l6 6-6 6" />,
+  image: <><rect x="3" y="4" width="18" height="16" rx="3" /><circle cx="9" cy="10" r="1.8" /><path d="m21 16-5-5-9 9" /></>,
+  upload: <><path d="M12 16V4M7 9l5-5 5 5" /><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" /></>,
+  search: <><circle cx="11" cy="11" r="6.5" /><path d="m20 20-4.2-4.2" /></>,
+  sparkle: <path d="M12 3c.6 4.2 2.8 6.4 7 7-4.2.6-6.4 2.8-7 7-.6-4.2-2.8-6.4-7-7 4.2-.6 6.4-2.8 7-7z" />,
+  trash: <><path d="M4 7h16M10 11v6M14 11v6" /><path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" /></>,
+  compare: <><rect x="3" y="4" width="18" height="16" rx="3" /><path d="M12 4v16" /></>,
+  arrow: <path d="M5 12h14M13 6l6 6-6 6" />,
+  left: <path d="M15 6l-6 6 6 6" />,
+  scale: <><rect x="3" y="4" width="18" height="16" rx="4" /><path d="M8.5 10a5 5 0 0 1 7 0l-2.5 2.5" /></>,
+  fork: <><path d="M7 3v8a3 3 0 0 0 6 0V3M10 3v18" /><path d="M17 3c-1.5 1.5-2 3.5-2 6s1 3 2 3v9" /></>,
 };
 export function Icon({ name, size = 20, strokeWidth = 2 }: { name: keyof typeof paths | string; size?: number; strokeWidth?: number }) {
   return (

@@ -6,6 +6,8 @@ import type { HqState } from "@/hq/schemas";
 import { actions, parseNumber, useHq } from "@/hq/store";
 import { useToday } from "@/hq/useToday";
 import { btn, Card, H2, input, Loading, PageTitle } from "./ui";
+import { GhostTip } from "./Journal";
+import { pageTip } from "@/hq/coordinator";
 import { WeightChart } from "./WeightChart";
 
 export function Progress() {
@@ -38,17 +40,18 @@ export function ProgressView({ hq, today }: { hq: HqState; today: string }) {
   return (
     <div className="flex flex-col gap-6">
       <PageTitle title="Progreso" sub="Lo que cuenta es la tendencia" />
+      <GhostTip name={hq.profile.mascotName} text={pageTip("/progreso", hq, today, null)} />
 
       <dl className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {stats.map((s) => (
-          <div key={s.label} className="rounded-3xl bg-panel p-4">
+          <div key={s.label} className="glass rounded-[22px] p-4">
             <dt className="text-xs text-mute">{s.label}</dt>
-            <dd className="font-display text-[22px] font-bold tracking-tight">{s.value}</dd>
+            <dd className="tnum font-display text-[22px] font-bold tracking-[-0.03em]">{s.value}</dd>
           </div>
         ))}
       </dl>
 
-      <Card aria-labelledby="peso-h" className="flex flex-col gap-4">
+      <Card id="pesaje" aria-labelledby="peso-h" className="flex scroll-mt-6 flex-col gap-4">
         <H2 id="peso-h">Peso</H2>
         <WeightChart series={series} goalKg={hq.profile.goalWeightKg} />
         <WeightForm today={today} />
