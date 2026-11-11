@@ -9,10 +9,12 @@ import { useSyncExternalStore } from "react";
 export interface UiPrefs {
   /** Panel derecho (inspector) en pantallas grandes. */
   inspector: boolean;
+  /** Avisos push de "Rapo a la 0" activos en este dispositivo. */
+  push: boolean;
 }
 
 const KEY = "wso.ui.v1";
-const DEFAULTS: UiPrefs = { inspector: true };
+const DEFAULTS: UiPrefs = { inspector: true, push: false };
 let cache: UiPrefs | null = null;
 const listeners = new Set<() => void>();
 

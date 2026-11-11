@@ -20,6 +20,7 @@
   --iris: #8e7cff;
   --amber: #ffb45c;
   --sky: #7cc4ff;
+  --mint: #5ee6b8;
   --danger: #ff8a80;
   --chart-trend: #c6f432;
   --chart-daily: #8e7cff;
@@ -42,6 +43,7 @@
   --color-iris: var(--iris);
   --color-amber: var(--amber);
   --color-sky: var(--sky);
+  --color-mint: var(--mint);
   --color-danger: var(--danger);
   --color-ink: #000000;
   --color-lime: #c6f432;

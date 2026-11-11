@@ -8,12 +8,13 @@ import * as L from "@/hq/logic";
 import type { HqState } from "@/hq/schemas";
 import { actions, parseNumber, useHq } from "@/hq/store";
 import { useHour, useToday } from "@/hq/useToday";
+import { CommandCenter, WorkMoney } from "./CommandCenter";
 import { ChallengeMap, Hero } from "./Hero";
 import { Mascot } from "./Mascot";
 import { TodayCapture } from "./Journal";
 import { MealLogger } from "./MealLogger";
-import { Avatar, Bar, btn, Card, Check, group, H2, Icon, input, Loading, PageTitle, Pill, row } from "./ui";
-import { DailyFuel, RapoMeter, StreakAvatar } from "./Widgets";
+import { Avatar, Bar, btn, Card, Check, group, H2, Icon, input, Loading, Pill, row } from "./ui";
+import { DailyFuel, RapoMeter } from "./Widgets";
 
 export function Dashboard() {
   const hq = useHq();
@@ -41,9 +42,9 @@ export function DashboardView({ hq, today, hour = 12 }: { hq: HqState; today: st
 
   return (
     <div className="flex flex-col gap-6">
-      <PageTitle title="Hoy" sub={longDate(today)} right={
-        <Link href="/ajustes" aria-label="Tu perfil y ajustes" className="mb-1 shrink-0"><StreakAvatar hq={hq} today={today} size={48} /></Link>
-      } />
+      <CommandCenter hq={hq} today={today} hour={hour} dateLabel={longDate(today)} />
+
+      <SectionTitle id="cuerpo" tone="text-accent" title="Cuerpo" sub="El reto · si fallo, me rapo" />
       <Hero hq={hq} today={today} />
       <div className="grid items-stretch gap-4 lg:grid-cols-2">
         <RapoMeter hq={hq} today={today} hour={hour} />
@@ -78,6 +79,9 @@ export function DashboardView({ hq, today, hour = 12 }: { hq: HqState; today: st
       </div>
 
       <ChallengeMap hq={hq} today={today} />
+
+      <SectionTitle id="vida" tone="text-sky" title="Trabajo, dinero y marca" sub="Lo que paga las cuentas y lo que te hace crecer" />
+      <WorkMoney hq={hq} today={today} />
 
       <Team hq={hq} today={today} />
     </div>
@@ -274,5 +278,14 @@ function Team({ hq, today }: { hq: HqState; today: string }) {
         ))}
       </div>
     </section>
+  );
+}
+
+function SectionTitle({ id, title, sub, tone }: { id: string; title: string; sub: string; tone: string }) {
+  return (
+    <div id={id} className="mt-2 flex scroll-mt-6 items-baseline gap-3 border-b border-white/[0.06] pb-2">
+      <h2 className={`font-display text-[22px] font-bold tracking-[-0.02em] ${tone}`}>{title}</h2>
+      <p className="truncate text-[13px] text-mute">{sub}</p>
+    </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { dayOf } from "./logic";
-import { defaultState, HqStateSchema, MealSchema, type DayLog, type Feeling, type HqState, type Meal, type Plan, type Profile } from "./schemas";
+import { defaultState, HqStateSchema, IncomeSchema, MealSchema, ProjectSchema, type DayLog, type Feeling, type HqState, type Meal, type Plan, type Profile } from "./schemas";
 
 /**
  * Guardado del centro de mando. Hoy vive en este navegador (localStorage);
@@ -78,6 +78,33 @@ export const actions = {
   },
   removeMeal: (date: string, id: string) => patchDay(date, { meals: dayOf(getSnapshot(), date).meals.filter((m) => m.id !== id) }),
   setPlan: (plan: Plan | null) => commit({ ...getSnapshot(), plan }),
+  // --- facetas ---
+  addFocusBlock: (date: string, delta = 1) => patchDay(date, { focusBlocks: Math.max(0, Math.min(20, dayOf(getSnapshot(), date).focusBlocks + delta)) }),
+  setWork: (patch: Partial<HqState["work"]>) => commit({ ...getSnapshot(), work: { ...getSnapshot().work, ...patch } }),
+  addProject(p: { name: string; client: string; due: string | null }) {
+    const full = ProjectSchema.parse({ ...p, id: Math.random().toString(36).slice(2, 10) });
+    const s = getSnapshot();
+    commit({ ...s, work: { ...s.work, projects: [...s.work.projects, full] } });
+  },
+  toggleProject(id: string) {
+    const s = getSnapshot();
+    commit({ ...s, work: { ...s.work, projects: s.work.projects.map((p) => (p.id === id ? { ...p, done: !p.done } : p)) } });
+  },
+  removeProject(id: string) {
+    const s = getSnapshot();
+    commit({ ...s, work: { ...s.work, projects: s.work.projects.filter((p) => p.id !== id) } });
+  },
+  setMoneyGoal: (monthlyGoal: number | null) => commit({ ...getSnapshot(), money: { ...getSnapshot().money, monthlyGoal } }),
+  addIncome(e: { date: string; amount: number; note: string }) {
+    const full = IncomeSchema.parse({ ...e, id: Math.random().toString(36).slice(2, 10) });
+    const s = getSnapshot();
+    commit({ ...s, money: { ...s.money, entries: [...s.money.entries, full].slice(-1000) } });
+  },
+  removeIncome(id: string) {
+    const s = getSnapshot();
+    commit({ ...s, money: { ...s.money, entries: s.money.entries.filter((e) => e.id !== id) } });
+  },
+  setWeeklyClips: (weeklyClips: number) => commit({ ...getSnapshot(), brand: { weeklyClips } }),
   updateProfile: (patch: Partial<Profile>) => commit({ ...getSnapshot(), profile: { ...getSnapshot().profile, ...patch } }),
   setAccessKey: (accessKey: string) => commit({ ...getSnapshot(), accessKey }),
   /** Respaldo sin la clave de acceso. */

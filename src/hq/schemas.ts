@@ -53,8 +53,44 @@ export const DayLogSchema = z.object({
   weightKg: z.number().min(30).max(300).nullable().default(null),
   feeling: FeelingSchema.nullable().default(null),
   meals: z.array(MealSchema).max(30).default([]),
+  /** Trabajo: bloques de enfoque (≈50 min sin distracciones) completados. */
+  focusBlocks: z.number().int().min(0).max(20).default(0),
 });
 export type DayLog = z.infer<typeof DayLogSchema>;
+
+// --- facetas del centro de mando (además del Cuerpo, que es el reto) -----------------------
+export const ProjectSchema = z.object({
+  id: z.string().min(1).max(40),
+  name: z.string().trim().min(1).max(60),
+  client: z.string().trim().max(60).default(""),
+  due: DateStr.nullable().default(null),
+  done: z.boolean().default(false),
+});
+export type Project = z.infer<typeof ProjectSchema>;
+
+export const WorkSchema = z.object({
+  focusGoal: z.number().int().min(1).max(8).default(2),
+  projects: z.array(ProjectSchema).max(30).default([]),
+});
+
+export const IncomeSchema = z.object({
+  id: z.string().min(1).max(40),
+  date: DateStr,
+  amount: z.number().positive().max(10_000_000),
+  note: z.string().trim().max(60).default(""),
+});
+export type Income = z.infer<typeof IncomeSchema>;
+
+export const MoneySchema = z.object({
+  /** Meta de ingresos del mes, en pesos. null = aún sin meta. */
+  monthlyGoal: z.number().positive().max(10_000_000).nullable().default(null),
+  entries: z.array(IncomeSchema).max(1000).default([]),
+});
+
+export const BrandSchema = z.object({
+  /** Clips publicados/aprobados por semana. */
+  weeklyClips: z.number().int().min(1).max(21).default(3),
+});
 
 export const HqStateSchema = z.object({
   v: z.literal(1).default(1),
@@ -63,6 +99,9 @@ export const HqStateSchema = z.object({
   days: z.record(DateStr, DayLogSchema).default({}),
   /** Clave para usar los agentes con IA (se compara en el servidor con WSO_API_SECRET). */
   accessKey: z.string().max(200).default(""),
+  work: WorkSchema.prefault({}),
+  money: MoneySchema.prefault({}),
+  brand: BrandSchema.prefault({}),
 });
 export type HqState = z.infer<typeof HqStateSchema>;
 

@@ -25,7 +25,7 @@ export const weekdayIndex = (s: string) => (parseDate(s).getDay() + 6) % 7;
 export const WEEKDAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"] as const;
 
 export const emptyDay = (date: string): DayLog => ({
-  date, trainingDone: false, clipDone: false, weightKg: null, feeling: null, meals: [],
+  date, trainingDone: false, clipDone: false, weightKg: null, feeling: null, meals: [], focusBlocks: 0,
 });
 export const dayOf = (s: HqState, date: string): DayLog => s.days[date] ?? emptyDay(date);
 export const kcalOf = (d: DayLog) => d.meals.reduce((sum, m) => sum + m.kcal, 0);
@@ -157,22 +157,32 @@ export interface DangerInfo {
  * Pasarse de calorías con el día ya registrado = peligro (ese día ya no cuenta).
  */
 export function dangerInfo(s: HqState, today: string, hour: number): DangerInfo {
-  const hoursLeft = Math.max(0, 24 - hour);
   const required = missionsFor(s, today).filter((m) => m.required);
-  const left = required.filter((m) => !m.done);
-  if (left.length === 0) return { level: "cumplido", pct: 0, title: "Día asegurado", detail: "La máquina se queda guardada hoy.", hoursLeft };
-
   const d = dayOf(s, today);
-  const over = d.meals.length >= MIN_MEALS && kcalOf(d) > s.profile.calorieTarget;
-  if (over) return { level: "peligro", pct: 100, title: "Te pasaste de calorías", detail: "Hoy ya no cuenta como cumplido. Mañana se retoma normal, sin compensar.", hoursLeft };
+  return dangerCore({
+    hour,
+    required: required.map((m) => m.id),
+    left: required.filter((m) => !m.done).map((m) => m.id),
+    over: d.meals.length >= MIN_MEALS && kcalOf(d) > s.profile.calorieTarget,
+  });
+}
 
-  const noMeals = left.some((m) => m.id === "meals");
-  const noTrain = left.some((m) => m.id === "train");
-  const late = (noMeals && hour >= 20) || (noTrain && hour >= 21);
-  const warn = (noMeals && hour >= 14) || (noTrain && hour >= 18);
-  const base = Math.round((hour / 24) * (left.length / required.length) * 100);
+/**
+ * Regla compartida por la app y por el aviso push del servidor (que solo recibe un resumen,
+ * no tus datos completos). `left`/`required` son ids de misión: "train" | "meals" | "kcal".
+ */
+export function dangerCore(x: { hour: number; required: string[]; left: string[]; over: boolean }): DangerInfo {
+  const hoursLeft = Math.max(0, 24 - x.hour);
+  if (x.left.length === 0) return { level: "cumplido", pct: 0, title: "Día asegurado", detail: "La máquina se queda guardada hoy.", hoursLeft };
+  if (x.over) return { level: "peligro", pct: 100, title: "Te pasaste de calorías", detail: "Hoy ya no cuenta como cumplido. Mañana se retoma normal, sin compensar.", hoursLeft };
+
+  const noMeals = x.left.includes("meals");
+  const noTrain = x.left.includes("train");
+  const late = (noMeals && x.hour >= 20) || (noTrain && x.hour >= 21);
+  const warn = (noMeals && x.hour >= 14) || (noTrain && x.hour >= 18);
+  const base = Math.round((x.hour / 24) * (x.left.length / Math.max(x.required.length, 1)) * 100);
   const pct = late ? Math.max(base, 85) : warn ? Math.max(base, 60) : Math.min(base, 45);
-  const what = left.filter((m) => !(m.id === "kcal" && noMeals)).map((m) => (m.id === "train" ? "entrenar" : m.id === "meals" ? "registrar comidas" : "cuidar calorías")).join(" y ");
+  const what = x.left.filter((id) => !(id === "kcal" && noMeals)).map((id) => (id === "train" ? "entrenar" : id === "meals" ? "registrar comidas" : "cuidar calorías")).join(" y ");
   if (late) return { level: "peligro", pct, title: `Quedan ${hoursLeft} h`, detail: `Te falta ${what}. Si hoy se cae, la máquina se acerca.`, hoursLeft };
   if (warn) return { level: "atento", pct, title: "Vas tarde", detail: `Te falta ${what}. Todavía alcanzas.`, hoursLeft };
   return { level: "ok", pct, title: "En tiempo", detail: `Te falta ${what}. Primero lo difícil.`, hoursLeft };

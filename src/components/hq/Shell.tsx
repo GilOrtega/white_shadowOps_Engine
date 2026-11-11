@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 import { challengeInfo } from "@/hq/logic";
+import { usePushSync } from "@/hq/push-client";
 import { useHq } from "@/hq/store";
 import { useToday } from "@/hq/useToday";
 import { CommandPalette, openCommandPalette } from "./CommandPalette";
@@ -72,6 +73,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const path = usePathname();
   const active = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
   usePointerGlow();
+  usePushSync(useHq(), useToday());
 
   return (
     <div className="min-h-dvh">

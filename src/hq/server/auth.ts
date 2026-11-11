@@ -21,3 +21,15 @@ export function checkAgentAccess(req: Request): AccessResult {
 
 export const deny = (r: Extract<AccessResult, { ok: false }>) =>
   Response.json({ code: r.code, message: r.message }, { status: r.status });
+
+/** Para rutas que no gastan IA (avisos push): basta la clave de acceso. */
+export function checkKey(req: Request): AccessResult {
+  const secret = process.env.WSO_API_SECRET;
+  if (!secret) return { ok: false, status: 503, code: "NOT_CONFIGURED", message: "Falta WSO_API_SECRET en el servidor." };
+  const got = Buffer.from(req.headers.get("x-wso-key") ?? "");
+  const want = Buffer.from(secret);
+  if (got.length !== want.length || !timingSafeEqual(got, want)) {
+    return { ok: false, status: 401, code: "UNAUTHORIZED", message: "Clave de acceso incorrecta." };
+  }
+  return { ok: true };
+}

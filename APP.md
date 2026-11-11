@@ -7,6 +7,13 @@ La app (Next.js 16) que vive encima del motor de shorts (`ENGINE.md`).
 - Celular: barra de pestañas translúcida y **Sombra como HUD flotante** (abre una hoja con el chat). Su halo cambia según el estado: listo, en fuego, celebrando, preocupado o pensando (cuando el Crew trabaja).
 - Materiales `glass` / `glass-bar` (blur + saturación + borde de 1 px) sobre un fondo de orbes; claro y oscuro siguen al sistema; todo respeta "reducir movimiento".
 
+## Centro de mando (pantalla Hoy)
+Arriba, tu día por **facetas**: Cuerpo (el reto), Mente (cómo vienes + Bitácora), Trabajo (bloques de enfoque y entregas de clientes), Marca (clips de la semana) y Dinero (ingresos del mes contra la meta y el ritmo). Cada una tiene su anillo, su número clave, su siguiente acción y el agente que la cuida; los anillos concéntricos dan la calificación del día y el titular dice qué sigue. Reglas puras en `src/hq/facets.ts`.
+
+## Avisos push "Rapo a la 0"
+Ajustes → Avisos del reto. Vercel Cron corre ~2 pm, ~8 pm y ~9 pm (hora de Sonora; en Hobby puede caer dentro de esa hora) y avisa solo si el día va en peligro, una vez por nivel. Al servidor solo va un resumen (qué misiones faltan), nunca comidas ni peso.
+Una vez: `npm run push:keys` → variables en Vercel (`NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `CRON_SECRET`), conectar **Upstash Redis** en Vercel → Storage, redeploy. En iPhone hay que agregar la app a la pantalla de inicio.
+
 ## Pantallas
 - `/` Hoy: resumen, **Rapo a la 0** (días al veredicto + barra de peligro del día verde→rojo según la hora), **Daily Fuel** (anillo de calorías, proteína y si el día ya quedó asegurado), plan de ataque del día, preguntas de los agentes, comidas, entrenamiento y equipo de agentes.
 - `/crew` **Estudio de shorts (Stream Crew)**:
