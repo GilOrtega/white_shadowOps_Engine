@@ -11,6 +11,8 @@ import { getEngineEnv } from "./env";
 export interface StructuredRequest<S extends z.ZodType> {
   system: string;
   prompt: string;
+  /** Imágenes que acompañan al prompt (base64, sin el prefijo data:). */
+  images?: { mediaType: "image/jpeg" | "image/png" | "image/webp"; data: string }[];
   schema: S;
   /** Nombre de la "herramienta" de salida; snake_case. */
   schemaName: string;
@@ -79,7 +81,22 @@ export class AnthropicStructuredLlm implements StructuredLlm {
       input_schema: toToolInputSchema(req.schema),
     };
 
-    const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: req.prompt }];
+    const messages: Anthropic.Messages.MessageParam[] = [
+      {
+        role: "user",
+        content: req.images?.length
+          ? [
+              ...req.images.map(
+                (img): Anthropic.Messages.ImageBlockParam => ({
+                  type: "image",
+                  source: { type: "base64", media_type: img.mediaType, data: img.data },
+                }),
+              ),
+              { type: "text", text: req.prompt },
+            ]
+          : req.prompt,
+      },
+    ];
     const usage = { inputTokens: 0, outputTokens: 0 };
     let lastIssue = "";
 

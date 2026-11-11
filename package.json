@@ -8,10 +8,11 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "tsx scripts/miner.selftest.ts && tsx scripts/llm.selftest.ts",
+    "test": "tsx scripts/hq.selftest.ts && tsx scripts/agents.selftest.ts && tsx scripts/ui.selftest.tsx && tsx scripts/miner.selftest.ts && tsx scripts/llm.selftest.ts",
     "test:media": "tsx scripts/media.selftest.ts",
     "test:pipeline": "tsx scripts/pipeline.selftest.ts",
-    "pipeline": "tsx --env-file=.env.local scripts/pipeline.ts"
+    "pipeline": "tsx --env-file=.env.local scripts/pipeline.ts",
+    "build:static": "node static/build.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.6.0",
@@ -29,6 +30,8 @@
     "eslint-config-next": "16.4.5",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
-    "typescript": "^5"
+    "typescript": "^5",
+    "esbuild": "^0.25.0",
+    "@tailwindcss/cli": "^4"
   }
 }
