@@ -15,6 +15,7 @@ import { TodayCapture } from "./Journal";
 import { MealLogger } from "./MealLogger";
 import { Avatar, Bar, btn, Card, Check, group, H2, Icon, input, Loading, Pill, row } from "./ui";
 import { DailyFuel, RapoMeter } from "./Widgets";
+import { Workout } from "./Workout";
 
 export function Dashboard() {
   const hq = useHq();
@@ -212,7 +213,6 @@ const ADJUST: Record<CoachAdvice["adjustment"], string> = {
 };
 
 function CoachCard({ hq, today }: { hq: HqState; today: string }) {
-  const t = L.trainingFor(hq.plan, today);
   const [busy, setBusy] = useState(false);
   const [advice, setAdvice] = useState<CoachAdvice | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -227,10 +227,7 @@ function CoachCard({ hq, today }: { hq: HqState; today: string }) {
   return (
     <Card aria-labelledby="coach-h" className="flex flex-col gap-3">
       <H2 id="coach-h">Entrenamiento de hoy</H2>
-      <p className="text-sm font-semibold">{t.title}</p>
-      {t.exercises.length > 0 ? (
-        <ol className="flex list-inside list-decimal flex-col gap-1 text-sm text-fg/85">{t.exercises.map((e) => <li key={e}>{e}</li>)}</ol>
-      ) : <p className="text-sm text-mute">{t.detail}</p>}
+      <Workout hq={hq} today={today} />
       <p className="text-xs text-mute">Si un ejercicio te da dolor agudo o en la articulación, se para y se revisa con un profesional.</p>
       <div className="mt-1 flex flex-col gap-2 border-t border-line pt-3">
         <button type="button" className={`${btn.ai} self-start`} disabled={busy} onClick={() => void ask()}>

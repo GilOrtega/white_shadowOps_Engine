@@ -27,10 +27,12 @@ function main() {
   const plan = L.buildPlan(["bajar", "4", "tarde", "tres"], "now")!;
   assert.deepEqual(plan.gymDays, [0, 1, 3, 4]);
   s = { ...s, plan };
-  assert.match(L.trainingFor(plan, TODAY).title, /Día A/);
-  assert.match(L.trainingFor(plan, "2026-11-10").title, /Día B/);
+  // 4 días → Torso / Pierna: lun torso A, mar pierna A, jue torso B, vie pierna B.
+  assert.match(L.trainingFor(plan, TODAY).title, /Torso A/);
+  assert.match(L.trainingFor(plan, "2026-11-10").title, /Pierna A/);
   assert.equal(L.trainingFor(plan, "2026-11-11").kind, "walk");
-  assert.match(L.trainingFor(plan, "2026-11-12").title, /Día A/);
+  assert.match(L.trainingFor(plan, "2026-11-12").title, /Torso B/);
+  assert.ok(L.trainingFor(plan, TODAY).exercises.length >= 5, "rutina completa, no solo 'haz pierna'");
   assert.equal(L.trainingFor(plan, "2026-11-15").kind, "rest");
   assert.equal(L.isContentDay(plan, TODAY), true);
   assert.equal(L.isContentDay(plan, "2026-11-10"), false);

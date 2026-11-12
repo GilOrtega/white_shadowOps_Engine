@@ -76,7 +76,7 @@ function context(hq: HqState, today: string): MascotRequest["context"] {
     name: hq.profile.name, mascotName: hq.profile.mascotName, dayNumber: info.dayNumber, daysLeft: info.daysLeft,
     streak: L.streak(hq, today), completeDays: prog.completeDays, rank: L.rankInfo(prog.xp).name,
     missionsLeft: L.missionsFor(hq, today).filter((m) => m.required && !m.done).map((m) => m.title),
-    training: L.trainingFor(hq.plan, today).title, kcal: L.kcalOf(L.dayOf(hq, today)), calorieTarget: hq.profile.calorieTarget, stake: hq.profile.stake,
+    training: L.trainingFor(hq.plan, today, hq.profile.startDate).title, kcal: L.kcalOf(L.dayOf(hq, today)), calorieTarget: hq.profile.calorieTarget, stake: hq.profile.stake,
   };
 }
 

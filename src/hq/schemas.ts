@@ -57,6 +57,11 @@ export const DayLogSchema = z.object({
   focusBlocks: z.number().int().min(0).max(20).default(0),
   /** Hábitos marcados ese día (ids). Para los de "evitar", marcado = lo cumpliste (no lo hiciste). */
   habitsDone: z.array(z.string().max(40)).max(40).default([]),
+  /** Registro del gym: ejercicio → peso de trabajo y reps por serie. */
+  lifts: z.record(z.string().max(30), z.object({
+    kg: z.number().min(0).max(600).nullable().default(null),
+    reps: z.array(z.number().int().min(0).max(300)).max(8).default([]),
+  })).default({}),
 });
 export type DayLog = z.infer<typeof DayLogSchema>;
 

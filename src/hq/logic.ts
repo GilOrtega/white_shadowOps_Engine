@@ -25,7 +25,7 @@ export const weekdayIndex = (s: string) => (parseDate(s).getDay() + 6) % 7;
 export const WEEKDAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"] as const;
 
 export const emptyDay = (date: string): DayLog => ({
-  date, trainingDone: false, clipDone: false, weightKg: null, feeling: null, meals: [], focusBlocks: 0, habitsDone: [],
+  date, trainingDone: false, clipDone: false, weightKg: null, feeling: null, meals: [], focusBlocks: 0, habitsDone: [], lifts: {},
 });
 export const dayOf = (s: HqState, date: string): DayLog => s.days[date] ?? emptyDay(date);
 export const kcalOf = (d: DayLog) => d.meals.reduce((sum, m) => sum + m.kcal, 0);
@@ -45,7 +45,8 @@ export function challengeInfo(p: Profile, today: string) {
   };
 }
 
-// --- entrenamiento ---------------------------------------------------------------
+// --- entrenamiento (el programa completo vive en training.ts) ---------------------
+import { rxLine, workoutFor } from "./training";
 export const ROUTINES = {
   A: {
     name: "Día A: pierna + empuje",
@@ -64,21 +65,9 @@ export interface Training {
   exercises: readonly string[];
 }
 
-export function trainingFor(plan: Plan | null, date: string): Training {
-  const wd = weekdayIndex(date);
-  if (!plan) {
-    return { kind: "walk", title: "Entrena o camina 30 min", detail: "El Estratega te arma la rutina cuando contestes sus 4 preguntas", exercises: [] };
-  }
-  const sorted = [...plan.gymDays].sort((a, b) => a - b);
-  const idx = sorted.indexOf(wd);
-  if (idx >= 0) {
-    const r = idx % 2 === 0 ? ROUTINES.A : ROUTINES.B;
-    return { kind: "gym", title: `Gym — ${r.name}`, detail: "60 min · deja 1 o 2 repeticiones en reserva", exercises: r.exercises };
-  }
-  if (wd === 6) {
-    return { kind: "rest", title: "Descanso activo: caminata suave", detail: "20 a 30 min · hoy toca pesaje y fotos", exercises: [] };
-  }
-  return { kind: "walk", title: "Caminar 40 min", detail: "Paso ligero · cuenta para el déficit", exercises: [] };
+export function trainingFor(plan: Plan | null, date: string, startDate = "2026-10-23"): Training {
+  const w = workoutFor(plan, date, startDate);
+  return { kind: w.kind, title: w.title, detail: w.detail, exercises: w.rx.map(rxLine) };
 }
 
 export function isContentDay(plan: Plan | null, date: string): boolean {
@@ -104,7 +93,7 @@ export interface Mission {
 
 export function missionsFor(s: HqState, date: string): Mission[] {
   const d = dayOf(s, date);
-  const t = trainingFor(s.plan, date);
+  const t = trainingFor(s.plan, date, s.profile.startDate);
   const kcal = kcalOf(d);
   const target = s.profile.calorieTarget;
   const enoughMeals = d.meals.length >= MIN_MEALS;
@@ -317,7 +306,7 @@ const GOAL_LABEL: Record<Plan["goal"], string> = { bajar: "bajar de peso", muscu
 
 export function agentCards(s: HqState, today: string): AgentCard[] {
   const d = dayOf(s, today);
-  const t = trainingFor(s.plan, today);
+  const t = trainingFor(s.plan, today, s.profile.startDate);
   const kcal = kcalOf(d);
   const target = s.profile.calorieTarget;
   return [
@@ -410,7 +399,7 @@ export function mascotLine(s: HqState, today: string, hour: number): MascotSay {
   const required = missionsFor(s, today).filter((m) => m.required);
   const left = required.filter((m) => !m.done);
   const info = challengeInfo(s.profile, today);
-  const t = trainingFor(s.plan, today);
+  const t = trainingFor(s.plan, today, s.profile.startDate);
   const seed = info.dayNumber;
   if (left.length === 0) {
     return { mood: "fiesta", text: pick([`¡Eso! Día ${info.dayNumber} en la bolsa. Mañana otra vez.`, "Otro cuadro verde. Así se remonta.", "Cumpliste. Hoy sí puedes verte al espejo con ganas."], seed) };

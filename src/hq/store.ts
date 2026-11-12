@@ -93,6 +93,16 @@ const patchDay = (date: string, patch: Partial<DayLog>) => {
 
 export const actions = {
   setTraining: (date: string, done: boolean) => patchDay(date, { trainingDone: done }),
+  setLift(date: string, id: string, patch: { kg?: number | null; setIndex?: number; reps?: number }) {
+    const d = dayOf(getSnapshot(), date);
+    const cur = d.lifts[id] ?? { kg: null, reps: [] };
+    const reps = [...cur.reps];
+    if (patch.setIndex !== undefined) {
+      while (reps.length <= patch.setIndex) reps.push(0);
+      reps[patch.setIndex] = Math.max(0, Math.min(300, Math.round(patch.reps ?? 0)));
+    }
+    patchDay(date, { lifts: { ...d.lifts, [id]: { kg: patch.kg !== undefined ? patch.kg : cur.kg, reps: reps.slice(0, 8) } } });
+  },
   setClip: (date: string, done: boolean) => patchDay(date, { clipDone: done }),
   setWeight: (date: string, kg: number | null) => patchDay(date, { weightKg: kg }),
   setFeeling: (date: string, feeling: Feeling | null) => patchDay(date, { feeling }),
