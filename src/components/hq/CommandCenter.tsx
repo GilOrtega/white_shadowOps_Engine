@@ -5,12 +5,13 @@ import { useState } from "react";
 import { useJobs } from "@/crew/repo";
 import type { StreamJob } from "@/crew/schemas";
 import * as F from "@/hq/facets";
-import { pulse } from "@/hq/journal";
+import { pulse, type Capture } from "@/hq/journal";
 import { useCaptures } from "@/hq/journal-store";
 import * as L from "@/hq/logic";
 import type { HqState } from "@/hq/schemas";
 import { actions, parseNumber } from "@/hq/store";
 import { btn, Card, H2, Icon, input } from "./ui";
+import { BeforeNow, ConsistencyMap, FacetArt, MiniBars, PaceLine, PhotoStrip, ScoreTrend } from "./Visuals";
 import { ActivityRing, StreakAvatar } from "./Widgets";
 
 /** Colores por faceta (anillo, texto, fondo suave). */
@@ -40,11 +41,14 @@ export function CommandCenter({ hq, today, hour, dateLabel }: { hq: HqState; tod
   const captures = useCaptures();
   const jobs = useJobs();
   const p = captures ? pulse(captures, today) : null;
-  return <CommandCenterView hq={hq} today={today} hour={hour} dateLabel={dateLabel} ctx={{ journal: p, approvedClipsThisWeek: approvedThisWeek(jobs, today) }} />;
+  return <CommandCenterView hq={hq} today={today} hour={hour} dateLabel={dateLabel} captures={captures} ctx={{ journal: p, approvedClipsThisWeek: approvedThisWeek(jobs, today) }} />;
 }
 
-export function CommandCenterView({ hq, today, hour, dateLabel, ctx }: { hq: HqState; today: string; hour: number; dateLabel: string; ctx: F.FacetContext }) {
+export function CommandCenterView({ hq, today, hour, dateLabel, ctx, captures = null }: { hq: HqState; today: string; hour: number; dateLabel: string; ctx: F.FacetContext; captures?: Capture[] | null }) {
   const list = F.facets(hq, today, hour, ctx);
+  const hist = F.history(hq, today, 14, new Set((captures ?? []).map((c) => c.date)));
+  const week = hist.slice(-7);
+  const pace = hq.money.monthlyGoal ? F.monthPace(hq, today) : null;
   const score = F.lifeScore(list);
   const urgent = F.mostUrgent(list);
   const headline = score >= 100 ? "Día redondo. Todas las facetas en verde." : urgent ? urgent.headline : "Vas bien. Sostén el ritmo.";
@@ -76,8 +80,39 @@ export function CommandCenterView({ hq, today, hour, dateLabel, ctx }: { hq: HqS
       </section>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
-        {list.map((f, i) => <div key={f.id} className={`flex lg:col-span-2 ${i >= 3 ? "lg:col-span-3" : ""}`}><FacetCard f={f} today={today} /></div>)}
+        {list.map((f, i) => (
+          <div key={f.id} className={`flex lg:col-span-2 ${i >= 3 ? "lg:col-span-3" : ""}`}>
+            <FacetCard f={f} today={today} chart={f.id === "dinero" && pace
+              ? <PaceLine data={pace} label={`Ingreso acumulado del mes contra el ritmo`} />
+              : <div className="w-full max-w-[300px]"><MiniBars id={f.id} points={week.map((d) => ({ date: d.date, v: d.scores[f.id] }))} label={`${f.name}: últimos 7 días`} /></div>} />
+          </div>
+        ))}
       </div>
+
+      <section aria-labelledby="semana-h" className="glass grid gap-5 rounded-[26px] p-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+        <div className="flex min-w-0 flex-col gap-2">
+          <div className="flex items-baseline justify-between gap-2">
+            <h2 id="semana-h" className="text-[17px] font-semibold tracking-tight">Tus últimas 2 semanas</h2>
+            <span className="text-[12px] text-mute">calificación del día (0–100)</span>
+          </div>
+          <ScoreTrend days={hist} />
+        </div>
+        <div className="flex min-w-0 flex-col gap-2">
+          <h3 className="text-[17px] font-semibold tracking-tight">Constancia por faceta</h3>
+          <ConsistencyMap days={hist} />
+        </div>
+      </section>
+
+      <section aria-labelledby="fotos-h" className="glass flex flex-col gap-3 rounded-[26px] p-5">
+        <div className="flex items-baseline justify-between gap-2">
+          <h2 id="fotos-h" className="text-[17px] font-semibold tracking-tight">Tu historia en fotos</h2>
+          <Link href="/bitacora" className="text-[13px] font-semibold text-iris">Abrir Bitácora →</Link>
+        </div>
+        <div className={`grid gap-4 ${captures?.some((c) => c.kind === "fisico") ? "lg:grid-cols-[minmax(0,1fr)_320px]" : ""}`}>
+          <PhotoStrip captures={captures ?? []} />
+          <BeforeNow captures={captures ?? []} />
+        </div>
+      </section>
     </div>
   );
 }
@@ -105,11 +140,12 @@ function LifeRings({ list, score }: { list: F.Facet[]; score: number }) {
   );
 }
 
-function FacetCard({ f, today }: { f: F.Facet; today: string }) {
+function FacetCard({ f, today, chart }: { f: F.Facet; today: string; chart: React.ReactNode }) {
   const t = TONE[f.id];
   const st = STATUS[f.status];
   return (
-    <article aria-labelledby={`facet-${f.id}`} className="glass flex w-full min-w-0 flex-col gap-3 rounded-[22px] p-4">
+    <article aria-labelledby={`facet-${f.id}`} className="glass relative isolate flex w-full min-w-0 flex-col gap-3 overflow-hidden rounded-[22px] p-4">
+      <FacetArt id={f.id} className="pointer-events-none absolute -bottom-6 -right-6 -z-10 h-36 w-36 opacity-[0.16]" />
       <div className="flex items-center justify-between gap-2">
         <span className="flex min-w-0 items-center gap-2">
           <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${t.soft} ${t.text}`}><Icon name={t.icon} size={16} /></span>
@@ -127,6 +163,7 @@ function FacetCard({ f, today }: { f: F.Facet; today: string }) {
           <p className="line-clamp-2 text-[12px] leading-snug text-mute">{f.sub}</p>
         </div>
       </div>
+      {chart}
       <div className="mt-auto">
         {f.next?.action.kind === "feeling" ? (
           <div role="group" aria-label="¿Cómo vienes hoy?" className="grid grid-cols-3 gap-1.5">

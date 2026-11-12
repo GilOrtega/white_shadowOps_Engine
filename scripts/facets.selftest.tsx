@@ -67,3 +67,22 @@ assert.match(wm, /Aura Homes/);
 assert.match(wm, /\$18,000 de \$30,000 este mes/);
 
 console.log("facetas OK ✔");
+
+// Historial para gráficas.
+const hist = F.history(full, TODAY, 14, new Set([TODAY]));
+assert.equal(hist.length, 14);
+assert.equal(hist.at(-1)!.date, TODAY);
+assert.equal(hist.at(-1)!.scores.cuerpo, 100);
+assert.equal(hist.at(-1)!.scores.mente, 100, "con todo + captura");
+assert.equal(hist.find((d) => d.date === "2026-11-09")!.scores.marca, 100);
+assert.equal(hist[0]!.scores.cuerpo, 0, "antes no había misiones");
+const pace = F.monthPace(full, TODAY);
+assert.equal(pace.length, 11);
+assert.equal(pace.at(-1)!.acc, 18000);
+assert.equal(Math.round(pace.at(-1)!.pace), 11000);
+const visual = text(renderToString(<CommandCenterView hq={full} today={TODAY} hour={21} dateLabel="x" ctx={{ journal: { todayCount: 1, streak: 4 }, approvedClipsThisWeek: 1 }} captures={[]} />));
+assert.match(visual, /Tus últimas 2 semanas/);
+assert.match(visual, /Constancia por faceta/);
+assert.match(visual, /Tu historia en fotos/);
+assert.match(visual, /Acumulado \$18,000/);
+console.log("visuales OK ✔");

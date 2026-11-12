@@ -153,3 +153,57 @@ export function mostUrgent(list: Facet[]): Facet | null {
   const rank: Record<FacetStatus, number> = { peligro: 0, atento: 1, ok: 2, "sin-datos": 3, cumplido: 4 };
   return [...list].filter((f) => f.next).sort((a, b) => rank[a.status] - rank[b.status] || a.pct - b.pct)[0] ?? null;
 }
+
+// --- historial (para gráficas) ----------------------------------------------------------
+const FEEL_SCORE = { con_todo: 100, normal: 60, fundido: 25 } as const;
+
+export interface DayScores {
+  date: string;
+  /** 0–100 por faceta; null = sin datos ese día (antes del reto, sin meta de dinero). */
+  scores: Record<FacetId, number | null>;
+  life: number | null;
+}
+
+/**
+ * Calificación de cada faceta en días pasados, con lo que sí quedó guardado:
+ * Cuerpo = misiones; Mente = ánimo + captura; Trabajo = bloques/meta; Marca = clip ese día;
+ * Dinero = ingreso acumulado del mes contra el ritmo esperado a esa fecha.
+ */
+export function history(s: HqState, today: string, days: number, captureDates: Set<string>): DayScores[] {
+  const out: DayScores[] = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const date = L.addDays(today, -i);
+    const d = L.dayOf(s, date);
+    const before = date < s.profile.startDate;
+    const req = L.missionsFor(s, date).filter((m) => m.required);
+    const cuerpo = before ? null : (req.filter((m) => m.done).length / Math.max(req.length, 1)) * 100;
+    const felt = d.feeling ? FEEL_SCORE[d.feeling] : 0;
+    const mente = d.feeling || captureDates.has(date) ? Math.min(100, felt * 0.5 + (captureDates.has(date) ? 50 : 0)) : 0;
+    const trabajo = Math.min(100, (d.focusBlocks / s.work.focusGoal) * 100);
+    const marca = d.clipDone ? 100 : 0;
+    let dinero: number | null = null;
+    if (s.money.monthlyGoal) {
+      const key = monthKey(date);
+      const acc = s.money.entries.filter((e) => e.date.startsWith(key) && e.date <= date).reduce((n, e) => n + e.amount, 0);
+      const expected = s.money.monthlyGoal * (Number(date.slice(8, 10)) / daysInMonth(date));
+      dinero = Math.min(100, (acc / Math.max(expected, 1)) * 100);
+    }
+    const scores = { cuerpo, mente, trabajo, marca, dinero };
+    const vals = Object.values(scores).filter((v): v is number => v !== null);
+    out.push({ date, scores, life: vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : null });
+  }
+  return out;
+}
+
+/** Ingreso acumulado día por día del mes en curso, con la línea de ritmo. */
+export function monthPace(s: HqState, today: string) {
+  const key = monthKey(today);
+  const n = daysInMonth(today);
+  const goal = s.money.monthlyGoal ?? 0;
+  let acc = 0;
+  return Array.from({ length: Number(today.slice(8, 10)) }, (_, i) => {
+    const date = `${key}-${String(i + 1).padStart(2, "0")}`;
+    acc += s.money.entries.filter((e) => e.date === date).reduce((m, e) => m + e.amount, 0);
+    return { date, acc, pace: goal * ((i + 1) / n) };
+  });
+}
