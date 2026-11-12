@@ -12,6 +12,7 @@ import * as L from "@/hq/logic";
 import type { HqState } from "@/hq/schemas";
 import { actions, parseNumber } from "@/hq/store";
 import { btn, Card, H2, Icon, input } from "./ui";
+import { Fold } from "./Fold";
 import { HabitsToday, Proposals } from "./Proactive";
 import { BeforeNow, ConsistencyMap, FacetArt, MiniBars, PaceLine, PhotoStrip, ScoreTrend } from "./Visuals";
 import { ActivityRing, StreakAvatar } from "./Widgets";
@@ -85,6 +86,8 @@ export function CommandCenterView({ hq, today, hour, dateLabel, ctx, captures = 
 
       <Proposals hq={hq} today={today} list={props} />
 
+      <Fold id="facetas" title="Tus 5 facetas a detalle" tone="text-iris"
+        summary={list.map((f) => `${f.name} ${f.status === "sin-datos" ? "—" : `${Math.round(Math.min(f.pct, 999))}%`}`).join(" · ")}>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
         {list.map((f, i) => (
           <div key={f.id} className={`flex lg:col-span-2 ${i >= 3 ? "lg:col-span-3" : ""}`}>
@@ -95,7 +98,11 @@ export function CommandCenterView({ hq, today, hour, dateLabel, ctx, captures = 
         ))}
       </div>
 
+      </Fold>
+
       <HabitsToday hq={hq} today={today} hhmm={hhmm} />
+
+      <Fold id="historia" title="Tu historia" tone="text-sky" summary="Últimas 2 semanas, constancia por faceta y fotos">
 
       <section aria-labelledby="semana-h" className="glass grid gap-5 rounded-[26px] p-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
         <div className="flex min-w-0 flex-col gap-2">
@@ -121,6 +128,7 @@ export function CommandCenterView({ hq, today, hour, dateLabel, ctx, captures = 
           <BeforeNow captures={captures ?? []} />
         </div>
       </section>
+      </Fold>
     </div>
   );
 }

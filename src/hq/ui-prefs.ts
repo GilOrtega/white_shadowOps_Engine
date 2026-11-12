@@ -11,10 +11,12 @@ export interface UiPrefs {
   inspector: boolean;
   /** Avisos push de "Rapo a la 0" activos en este dispositivo. */
   push: boolean;
+  /** Secciones desplegables abiertas/cerradas por el usuario (id → abierta). */
+  open: Record<string, boolean>;
 }
 
 const KEY = "wso.ui.v1";
-const DEFAULTS: UiPrefs = { inspector: true, push: false };
+const DEFAULTS: UiPrefs = { inspector: true, push: false, open: {} };
 let cache: UiPrefs | null = null;
 const listeners = new Set<() => void>();
 
@@ -37,6 +39,9 @@ const subscribe = (cb: () => void) => {
 export function useUiPrefs(): UiPrefs {
   return useSyncExternalStore(subscribe, snapshot, () => DEFAULTS);
 }
+
+/** Lectura puntual (fuera de render), p. ej. dentro de un listener. */
+export const getUiPrefs = (): UiPrefs => snapshot();
 
 export function setUiPrefs(patch: Partial<UiPrefs>) {
   cache = { ...snapshot(), ...patch };

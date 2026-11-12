@@ -8,6 +8,9 @@ import { PushCard } from "./PushCard";
 import { SyncCard } from "./SyncCard";
 import { btn, Card, H2, input, Loading, PageTitle } from "./ui";
 
+/** Igual que en el servidor: sin espacios, saltos de línea ni comillas alrededor. */
+const cleanKey = (raw: string) => raw.trim().replace(/^(["'`])([\s\S]*)\1$/, "$2").trim();
+
 export function Settings() {
   const hq = useHq();
   if (!hq) return <Loading />;
@@ -22,6 +25,7 @@ export function SettingsView({ hq }: { hq: HqState }) {
   });
   const [key, setKey] = useState(hq.accessKey);
   const [msg, setMsg] = useState<{ where: "perfil" | "clave" | "datos"; text: string; ok: boolean } | null>(null);
+  const [testing, setTesting] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [backupUrl, setBackupUrl] = useState<string | null>(null);
   const [backupText, setBackupText] = useState("");
@@ -42,6 +46,28 @@ export function SettingsView({ hq }: { hq: HqState }) {
     }
     actions.updateProfile(parsed.data);
     setMsg({ where: "perfil", ok: true, text: "Guardado." });
+  }
+
+  async function testKey(k: string) {
+    if (process.env.WSO_STATIC) return setMsg({ where: "clave", ok: true, text: "Clave guardada. Se prueba cuando abras la app en Vercel." });
+    if (!k) return setMsg({ where: "clave", ok: false, text: "Escribe la clave primero." });
+    setTesting(true);
+    try {
+      const res = await fetch("/api/auth/check", { headers: { "x-wso-key": k } });
+      const json = (await res.json().catch(() => null)) as { code?: string; ai?: boolean; sync?: boolean; push?: boolean } | null;
+      if (res.ok && json) {
+        const missing = [!json.ai && "ANTHROPIC_API_KEY (IA)", !json.sync && "Upstash Redis (sincronizar y Operaciones)", !json.push && "llaves VAPID (avisos)"].filter(Boolean);
+        setMsg({ where: "clave", ok: true, text: missing.length ? `Clave correcta. Al servidor aún le falta: ${missing.join(", ")}.` : "Clave correcta. IA, sincronización y avisos listos." });
+      } else if (json?.code === "NOT_CONFIGURED") {
+        setMsg({ where: "clave", ok: false, text: "El servidor no tiene WSO_API_SECRET. Agrégala en Vercel (Production) y vuelve a desplegar." });
+      } else {
+        setMsg({ where: "clave", ok: false, text: "No coincide con WSO_API_SECRET de Vercel. Copia el valor exacto de Vercel aquí; si lo cambiaste hace poco, haz Redeploy primero (Vercel solo lo toma al desplegar)." });
+      }
+    } catch {
+      setMsg({ where: "clave", ok: false, text: "Sin conexión con el servidor. Intenta de nuevo." });
+    } finally {
+      setTesting(false);
+    }
   }
 
   return (
@@ -98,13 +124,16 @@ export function SettingsView({ hq }: { hq: HqState }) {
           <li>Vuelve a desplegar el proyecto.</li>
           <li>Escribe aquí esa misma frase de <code className="text-accent">WSO_API_SECRET</code>.</li>
         </ol>
-        <form className="flex flex-wrap items-end gap-3" onSubmit={(e) => { e.preventDefault(); actions.setAccessKey(key.trim()); setMsg({ where: "clave", ok: true, text: "Clave guardada en este navegador." }); }}>
+        <form className="flex flex-wrap items-end gap-3" onSubmit={(e) => { e.preventDefault(); const clean = cleanKey(key); setKey(clean); actions.setAccessKey(clean); void testKey(clean); }}>
           <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-mute">Clave de acceso
             <input type="password" autoComplete="off" className={input} value={key} onChange={(e) => setKey(e.target.value)} maxLength={200} />
           </label>
-          <button type="submit" className={btn.ghost}>Guardar clave</button>
+          <button type="submit" className={btn.primary} disabled={testing}>{testing ? "Probando…" : "Guardar y probar"}</button>
         </form>
-        {note("clave")}
+        <div className="flex flex-wrap items-center gap-3">
+          {hq.accessKey && <button type="button" className={btn.chip} disabled={testing} onClick={() => void testKey(hq.accessKey)}>Probar la clave guardada</button>}
+          {note("clave")}
+        </div>
         <p className="text-xs text-mute">Sin clave todo lo demás funciona igual: registras comidas a mano y el Coach te habla con sus reglas fijas.</p>
       </Card>
 

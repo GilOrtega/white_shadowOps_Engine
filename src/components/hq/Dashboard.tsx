@@ -9,6 +9,7 @@ import type { HqState } from "@/hq/schemas";
 import { actions, parseNumber, useHq } from "@/hq/store";
 import { useHour, useToday } from "@/hq/useToday";
 import { CommandCenter, WorkMoney } from "./CommandCenter";
+import { Fold, FoldIndex } from "./Fold";
 import { ChallengeMap, Hero } from "./Hero";
 import { Mascot } from "./Mascot";
 import { TodayCapture } from "./Journal";
@@ -41,50 +42,66 @@ export function DashboardView({ hq, today, hour = 12 }: { hq: HqState; today: st
   const day = L.dayOf(hq, today);
   const kcal = L.kcalOf(day);
 
+  const missions = L.missionsFor(hq, today).filter((m) => m.required);
+  const missionsDone = missions.filter((m) => m.done).length;
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
+      <FoldIndex items={[
+        { id: "facetas", label: "Facetas", dot: "bg-iris" },
+        { id: "historia", label: "Historia", dot: "bg-sky" },
+        { id: "hoy", label: "Hoy", dot: "bg-lime" },
+        { id: "cuerpo", label: "Cuerpo", dot: "bg-accent" },
+        { id: "vida", label: "Trabajo y dinero", dot: "bg-sky" },
+        { id: "equipo", label: "Equipo", dot: "bg-amber" },
+      ]} />
       <CommandCenter hq={hq} today={today} hour={hour} dateLabel={longDate(today)} />
 
-      <SectionTitle id="cuerpo" tone="text-accent" title="Cuerpo" sub="El reto · si fallo, me rapo" />
-      <Hero hq={hq} today={today} />
-      <div className="grid items-stretch gap-4 lg:grid-cols-2">
-        <RapoMeter hq={hq} today={today} hour={hour} />
-        <DailyFuel hq={hq} today={today} />
-      </div>
-      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
-        <Mascot hq={hq} today={today} hour={hour} />
-        <TodayCapture today={today} />
-      </div>
-      <p className="glass rounded-2xl px-4 py-3 text-[15px] leading-snug"><span className="font-semibold text-iris">Coach.</span> {L.coachNote(hq, today)}</p>
 
-      <section aria-label="Resumen" className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
-        <Kpi label="Peso (tendencia 7 días)" value={L.fmtKg(trend)} pct={null}
-          sub={`${rate === null ? "Aún sin ritmo semanal" : `${rate > 0 ? "+" : ""}${rate.toFixed(1)} kg por semana`} · ${hq.profile.goalWeightKg === null ? "sin meta" : `meta ${L.fmtKg(hq.profile.goalWeightKg)}`}`} />
-        <Kpi label="Desde el día 1" value={`${change > 0 ? "+" : ""}${change.toFixed(1)} kg`} pct={null}
-          sub={change < -0.05 ? "Eso ya no regresa. Sigue." : "La báscula se mueve cuando cumples días."} />
-        <Kpi label="Días cumplidos" value={`${prog.completeDays} de ${info.dayNumber}`} pct={(prog.completeDays / info.dayNumber) * 100} tone="sky"
-          sub={`Reto al ${info.pct}% · termina el ${shortDate(info.endDate)}`} />
-        <Kpi label="Calorías de hoy" value={`${kcal.toLocaleString("es-MX")} / ${hq.profile.calorieTarget.toLocaleString("es-MX")}`}
-          pct={(kcal / hq.profile.calorieTarget) * 100} tone={kcal > hq.profile.calorieTarget ? "amber" : "accent"}
-          sub={`${day.meals.length} ${day.meals.length === 1 ? "comida" : "comidas"} · ${Math.round(L.proteinOf(day))} g proteína`} />
-      </section>
+      <Fold id="hoy" title="Hoy: plan, comidas y gym" tone="text-lime" defaultOpen
+        summary={`${missionsDone} de ${missions.length} misiones · ${kcal.toLocaleString("es-MX")} de ${hq.profile.calorieTarget.toLocaleString("es-MX")} kcal`}>
+        <div className="grid items-start gap-4 lg:grid-cols-2">
+          <Missions hq={hq} today={today} />
+          <Questions hq={hq} today={today} />
+        </div>
+        <div className="grid items-start gap-4 lg:grid-cols-2">
+          <div id="comidas" className="scroll-mt-6"><MealLogger hq={hq} today={today} /></div>
+          <CoachCard hq={hq} today={today} />
+        </div>
+      </Fold>
 
-      <div className="grid items-start gap-4 lg:grid-cols-2">
-        <Missions hq={hq} today={today} />
-        <Questions hq={hq} today={today} />
-      </div>
+      <Fold id="cuerpo" title="Cuerpo: el reto" tone="text-accent"
+        summary={`Día ${info.dayNumber} de ${hq.profile.challengeDays} · ${L.fmtKg(trend)} · ${prog.completeDays} días cumplidos`}>
+        <Hero hq={hq} today={today} />
+        <div className="grid items-stretch gap-4 lg:grid-cols-2">
+          <RapoMeter hq={hq} today={today} hour={hour} />
+          <DailyFuel hq={hq} today={today} />
+        </div>
+        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+          <Mascot hq={hq} today={today} hour={hour} />
+          <TodayCapture today={today} />
+        </div>
+        <p className="glass rounded-2xl px-4 py-3 text-[15px] leading-snug"><span className="font-semibold text-iris">Coach.</span> {L.coachNote(hq, today)}</p>
+        <section aria-label="Resumen" className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+          <Kpi label="Peso (tendencia 7 días)" value={L.fmtKg(trend)} pct={null}
+            sub={`${rate === null ? "Aún sin ritmo semanal" : `${rate > 0 ? "+" : ""}${rate.toFixed(1)} kg por semana`} · ${hq.profile.goalWeightKg === null ? "sin meta" : `meta ${L.fmtKg(hq.profile.goalWeightKg)}`}`} />
+          <Kpi label="Desde el día 1" value={`${change > 0 ? "+" : ""}${change.toFixed(1)} kg`} pct={null}
+            sub={change < -0.05 ? "Eso ya no regresa. Sigue." : "La báscula se mueve cuando cumples días."} />
+          <Kpi label="Días cumplidos" value={`${prog.completeDays} de ${info.dayNumber}`} pct={(prog.completeDays / info.dayNumber) * 100} tone="sky"
+            sub={`Reto al ${info.pct}% · termina el ${shortDate(info.endDate)}`} />
+          <Kpi label="Calorías de hoy" value={`${kcal.toLocaleString("es-MX")} / ${hq.profile.calorieTarget.toLocaleString("es-MX")}`}
+            pct={(kcal / hq.profile.calorieTarget) * 100} tone={kcal > hq.profile.calorieTarget ? "amber" : "accent"}
+            sub={`${day.meals.length} ${day.meals.length === 1 ? "comida" : "comidas"} · ${Math.round(L.proteinOf(day))} g proteína`} />
+        </section>
+        <ChallengeMap hq={hq} today={today} />
+      </Fold>
 
-      <div className="grid items-start gap-4 lg:grid-cols-2">
-        <div id="comidas" className="scroll-mt-6"><MealLogger hq={hq} today={today} /></div>
-        <CoachCard hq={hq} today={today} />
-      </div>
+      <Fold id="vida" title="Trabajo, dinero y marca" tone="text-sky" summary="Lo que paga las cuentas y lo que te hace crecer">
+        <WorkMoney hq={hq} today={today} />
+      </Fold>
 
-      <ChallengeMap hq={hq} today={today} />
-
-      <SectionTitle id="vida" tone="text-sky" title="Trabajo, dinero y marca" sub="Lo que paga las cuentas y lo que te hace crecer" />
-      <WorkMoney hq={hq} today={today} />
-
-      <Team hq={hq} today={today} />
+      <Fold id="equipo" title="Tu equipo de agentes" tone="text-amber" summary="Quién hace qué y qué te toca a ti">
+        <Team hq={hq} today={today} />
+      </Fold>
     </div>
   );
 }
@@ -275,14 +292,5 @@ function Team({ hq, today }: { hq: HqState; today: string }) {
         ))}
       </div>
     </section>
-  );
-}
-
-function SectionTitle({ id, title, sub, tone }: { id: string; title: string; sub: string; tone: string }) {
-  return (
-    <div id={id} className="mt-2 flex scroll-mt-6 items-baseline gap-3 border-b border-white/[0.06] pb-2">
-      <h2 className={`font-display text-[22px] font-bold tracking-[-0.02em] ${tone}`}>{title}</h2>
-      <p className="truncate text-[13px] text-mute">{sub}</p>
-    </div>
   );
 }
