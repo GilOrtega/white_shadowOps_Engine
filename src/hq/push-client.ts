@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import * as H from "./habits";
 import { snapshotOf } from "./push";
 import type { HqState } from "./schemas";
 import { setUiPrefs, useUiPrefs } from "./ui-prefs";
@@ -88,5 +89,43 @@ export function usePushSync(hq: HqState | null, today: string | null) {
       void post("/api/push/state", hq.accessKey, snap);
     }, 4000);
     return () => window.clearTimeout(id);
+  }, [push, hq, today]);
+}
+
+const hhmmNow = () => {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+};
+
+/**
+ * Recordatorios locales mientras la app está abierta (sin servidor). Si los avisos push están
+ * activos, el servidor se encarga y esto no hace nada (para no avisar doble).
+ */
+export function useLocalReminders(hq: HqState | null, today: string | null) {
+  const { push } = useUiPrefs();
+  useEffect(() => {
+    if (push || !hq || !today || typeof window === "undefined" || !("Notification" in window)) return;
+    const tick = async () => {
+      if (Notification.permission !== "granted") return;
+      const now = hhmmNow();
+      const toMin = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+      for (const it of H.today(hq, today, now)) {
+        if (!it.late || toMin(now) - toMin(it.habit.time!) > 90) continue;
+        const key = `wso.rem.${today}.${it.habit.id}`;
+        try {
+          if (localStorage.getItem(key)) continue;
+          localStorage.setItem(key, "1");
+        } catch {
+          continue;
+        }
+        const reg = await navigator.serviceWorker?.getRegistration("/sw.js");
+        const body = `${H.stackLine(it.habit)}. Márcalo cuando lo hagas.`;
+        if (reg) await reg.showNotification(`${it.habit.emoji} ${it.habit.title}`, { body, tag: `wso-habit-${it.habit.id}` });
+        else new Notification(`${it.habit.emoji} ${it.habit.title}`, { body });
+      }
+    };
+    void tick();
+    const id = window.setInterval(() => void tick(), 60_000);
+    return () => window.clearInterval(id);
   }, [push, hq, today]);
 }

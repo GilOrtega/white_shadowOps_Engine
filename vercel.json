@@ -1,8 +1,21 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "crons": [
-    { "path": "/api/cron/rapo", "schedule": "0 21 * * *" },
-    { "path": "/api/cron/rapo", "schedule": "0 3 * * *" },
-    { "path": "/api/cron/rapo", "schedule": "0 4 * * *" }
+    {
+      "path": "/api/cron/tick",
+      "schedule": "0 16 * * *"
+    },
+    {
+      "path": "/api/cron/tick",
+      "schedule": "0 21 * * *"
+    },
+    {
+      "path": "/api/cron/tick",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/tick",
+      "schedule": "0 4 * * *"
+    }
   ]
 }

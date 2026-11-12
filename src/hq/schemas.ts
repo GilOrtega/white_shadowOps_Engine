@@ -55,6 +55,8 @@ export const DayLogSchema = z.object({
   meals: z.array(MealSchema).max(30).default([]),
   /** Trabajo: bloques de enfoque (≈50 min sin distracciones) completados. */
   focusBlocks: z.number().int().min(0).max(20).default(0),
+  /** Hábitos marcados ese día (ids). Para los de "evitar", marcado = lo cumpliste (no lo hiciste). */
+  habitsDone: z.array(z.string().max(40)).max(40).default([]),
 });
 export type DayLog = z.infer<typeof DayLogSchema>;
 
@@ -87,6 +89,24 @@ export const MoneySchema = z.object({
   entries: z.array(IncomeSchema).max(1000).default([]),
 });
 
+// --- hábitos y recordatorios (habit stacking) --------------------------------------------
+export const HabitSchema = z.object({
+  id: z.string().min(1).max(40),
+  title: z.string().trim().min(1).max(50),
+  emoji: z.string().max(8).default("✅"),
+  /** Hora del recordatorio "HH:MM" (hora local). null = sin aviso. */
+  time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).nullable().default(null),
+  /** Días de la semana (0 = lunes … 6 = domingo). */
+  days: z.array(z.number().int().min(0).max(6)).min(1).max(7).default([0, 1, 2, 3, 4, 5, 6]),
+  /** Ancla: "después de…" (habit stacking). */
+  anchor: z.string().trim().max(60).default(""),
+  /** "hacer" = algo que sumas; "evitar" = algo que dejas (no refresco). */
+  kind: z.enum(["hacer", "evitar"]).default("hacer"),
+  facet: z.enum(["cuerpo", "mente", "trabajo", "marca", "dinero"]).default("cuerpo"),
+  createdAt: DateStr,
+});
+export type Habit = z.infer<typeof HabitSchema>;
+
 export const BrandSchema = z.object({
   /** Clips publicados/aprobados por semana. */
   weeklyClips: z.number().int().min(1).max(21).default(3),
@@ -102,6 +122,9 @@ export const HqStateSchema = z.object({
   work: WorkSchema.prefault({}),
   money: MoneySchema.prefault({}),
   brand: BrandSchema.prefault({}),
+  habits: z.array(HabitSchema).max(24).default([]),
+  /** Propuestas de los agentes que descartaste: id → fecha (vuelven a salir si cambian los datos). */
+  dismissed: z.record(z.string().max(80), DateStr).default({}),
 });
 export type HqState = z.infer<typeof HqStateSchema>;
 

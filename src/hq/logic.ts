@@ -25,7 +25,7 @@ export const weekdayIndex = (s: string) => (parseDate(s).getDay() + 6) % 7;
 export const WEEKDAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"] as const;
 
 export const emptyDay = (date: string): DayLog => ({
-  date, trainingDone: false, clipDone: false, weightKg: null, feeling: null, meals: [], focusBlocks: 0,
+  date, trainingDone: false, clipDone: false, weightKg: null, feeling: null, meals: [], focusBlocks: 0, habitsDone: [],
 });
 export const dayOf = (s: HqState, date: string): DayLog => s.days[date] ?? emptyDay(date);
 export const kcalOf = (d: DayLog) => d.meals.reduce((sum, m) => sum + m.kcal, 0);

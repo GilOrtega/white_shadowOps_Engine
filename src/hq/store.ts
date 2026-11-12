@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { dayOf } from "./logic";
-import { defaultState, HqStateSchema, IncomeSchema, MealSchema, ProjectSchema, type DayLog, type Feeling, type HqState, type Meal, type Plan, type Profile } from "./schemas";
+import { defaultState, HabitSchema, HqStateSchema, IncomeSchema, MealSchema, ProjectSchema, type DayLog, type Habit, type Feeling, type HqState, type Meal, type Plan, type Profile } from "./schemas";
 
 /**
  * Guardado del centro de mando. Hoy vive en este navegador (localStorage);
@@ -105,6 +105,25 @@ export const actions = {
     commit({ ...s, money: { ...s.money, entries: s.money.entries.filter((e) => e.id !== id) } });
   },
   setWeeklyClips: (weeklyClips: number) => commit({ ...getSnapshot(), brand: { weeklyClips } }),
+  // --- hábitos ---
+  addHabit(h: Omit<Habit, "id" | "createdAt"> & { createdAt?: string }, today: string) {
+    const s = getSnapshot();
+    const full = HabitSchema.parse({ ...h, id: Math.random().toString(36).slice(2, 10), createdAt: h.createdAt ?? today });
+    commit({ ...s, habits: [...s.habits, full].slice(0, 24) });
+  },
+  updateHabit(id: string, patch: Partial<Habit>) {
+    const s = getSnapshot();
+    commit({ ...s, habits: s.habits.map((h) => (h.id === id ? HabitSchema.parse({ ...h, ...patch }) : h)) });
+  },
+  removeHabit(id: string) {
+    const s = getSnapshot();
+    commit({ ...s, habits: s.habits.filter((h) => h.id !== id) });
+  },
+  toggleHabit(date: string, id: string) {
+    const done = dayOf(getSnapshot(), date).habitsDone;
+    patchDay(date, { habitsDone: done.includes(id) ? done.filter((x) => x !== id) : [...done, id] });
+  },
+  dismiss: (insightId: string, date: string) => commit({ ...getSnapshot(), dismissed: { ...getSnapshot().dismissed, [insightId]: date } }),
   updateProfile: (patch: Partial<Profile>) => commit({ ...getSnapshot(), profile: { ...getSnapshot().profile, ...patch } }),
   setAccessKey: (accessKey: string) => commit({ ...getSnapshot(), accessKey }),
   /** Respaldo sin la clave de acceso. */

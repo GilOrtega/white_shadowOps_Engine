@@ -5,6 +5,7 @@ import { localClock, pushDecision, snapshotOf, PushSnapshotSchema } from "../src
 import { defaultState, HqStateSchema } from "../src/hq/schemas";
 import { GET as cron } from "../src/app/api/cron/rapo/route";
 import { POST as subscribe } from "../src/app/api/push/subscribe/route";
+import { GET as tick } from "../src/app/api/cron/tick/route";
 
 const TODAY = "2026-11-09";
 const meal = (kcal: number, i: number) => ({ id: `m${i}`, name: "comida", kcal, proteinG: 30, source: "manual" as const, at: "x" });
@@ -43,8 +44,8 @@ async function main() {
   assert.match(b.body, /registrar comidas/);
 
   // Reloj local: 03:30 UTC del 10 nov = 20:30 del 9 nov en Hermosillo (UTC−7, sin horario de verano).
-  assert.deepEqual(localClock(new Date("2026-11-10T03:30:00Z"), "America/Hermosillo"), { date: "2026-11-09", hour: 20 });
-  assert.deepEqual(localClock(new Date("2026-11-09T21:10:00Z"), "America/Hermosillo"), { date: "2026-11-09", hour: 14 });
+  assert.deepEqual(localClock(new Date("2026-11-10T03:30:00Z"), "America/Hermosillo"), { date: "2026-11-09", hour: 20, hhmm: "20:30" });
+  assert.deepEqual(localClock(new Date("2026-11-09T21:10:00Z"), "America/Hermosillo"), { date: "2026-11-09", hour: 14, hhmm: "14:10" });
 
   // Rutas: sin secreto no corren; sin configuración lo dicen claro.
   delete process.env.CRON_SECRET;
@@ -53,6 +54,8 @@ async function main() {
   assert.equal((await cron(new Request("http://x/api/cron/rapo", { headers: { authorization: "Bearer nope" } }))).status, 401);
   const notReady = await cron(new Request("http://x/api/cron/rapo", { headers: { authorization: "Bearer s3cret" } }));
   assert.equal(notReady.status, 503, "sin VAPID/Redis responde 503 y no truena");
+  assert.equal((await tick(new Request("http://x", { headers: { authorization: "Bearer s3cret" } }))).status, 503);
+  assert.equal((await tick(new Request("http://x"))).status, 401);
   process.env.WSO_API_SECRET = "clave";
   assert.equal((await subscribe(new Request("http://x", { method: "POST", body: "{}" }))).status, 401);
   assert.equal((await subscribe(new Request("http://x", { method: "POST", headers: { "x-wso-key": "clave" }, body: "{}" }))).status, 503);

@@ -10,6 +10,11 @@ La app (Next.js 16) que vive encima del motor de shorts (`ENGINE.md`).
 ## Centro de mando (pantalla Hoy)
 Arriba, tu día por **facetas**: Cuerpo (el reto), Mente (cómo vienes + Bitácora), Trabajo (bloques de enfoque y entregas de clientes), Marca (clips de la semana) y Dinero (ingresos del mes contra la meta y el ritmo). Cada una tiene su anillo, su número clave, su siguiente acción y el agente que la cuida; los anillos concéntricos dan la calificación del día y el titular dice qué sigue. Reglas puras en `src/hq/facets.ts`.
 
+## Sombra propone (agente proactivo) y Rutina de hoy
+- **Propuestas** (`src/hq/insights.ts`): reglas fijas que revisan tus datos y sugieren con el dato que lo justifica; nada cambia hasta que aceptas ("Ahora no" la oculta ese día). Peso estancado → −100 kcal; bajando muy rápido → +100; entrega en ≤3 días → +1 bloque; hábito que se cae → moverlo 1 h antes; 3 días sin clip; dinero atrás del ritmo; 2 días fundido → versión ligera. "Más ideas (IA)" pide 3–4 ideas a Sombra con tu contexto (`/api/agents/ideas`).
+- **Rutina de hoy** (`src/hq/habits.ts`): hábitos con hora, días, ancla ("después de…") y tipo hacer/evitar; anillo y racha por hábito; plantillas (creatina, agua, pesarme, dormir, sin refresco…).
+- **Recordatorios**: con la app abierta avisa sola; con avisos push activos los manda el servidor (`/api/cron/tick`) a su hora, junto con "Rapo a la 0" y la **idea del día** (~9 am).
+
 ## Avisos push "Rapo a la 0"
 Ajustes → Avisos del reto. Vercel Cron corre ~2 pm, ~8 pm y ~9 pm (hora de Sonora; en Hobby puede caer dentro de esa hora) y avisa solo si el día va en peligro, una vez por nivel. Al servidor solo va un resumen (qué misiones faltan), nunca comidas ni peso.
 Una vez: `npm run push:keys` → variables en Vercel (`NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `CRON_SECRET`), conectar **Upstash Redis** en Vercel → Storage, redeploy. En iPhone hay que agregar la app a la pantalla de inicio.

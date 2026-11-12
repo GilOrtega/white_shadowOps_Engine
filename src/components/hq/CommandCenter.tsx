@@ -5,12 +5,14 @@ import { useState } from "react";
 import { useJobs } from "@/crew/repo";
 import type { StreamJob } from "@/crew/schemas";
 import * as F from "@/hq/facets";
+import { proposals } from "@/hq/insights";
 import { pulse, type Capture } from "@/hq/journal";
 import { useCaptures } from "@/hq/journal-store";
 import * as L from "@/hq/logic";
 import type { HqState } from "@/hq/schemas";
 import { actions, parseNumber } from "@/hq/store";
 import { btn, Card, H2, Icon, input } from "./ui";
+import { HabitsToday, Proposals } from "./Proactive";
 import { BeforeNow, ConsistencyMap, FacetArt, MiniBars, PaceLine, PhotoStrip, ScoreTrend } from "./Visuals";
 import { ActivityRing, StreakAvatar } from "./Widgets";
 
@@ -49,6 +51,8 @@ export function CommandCenterView({ hq, today, hour, dateLabel, ctx, captures = 
   const hist = F.history(hq, today, 14, new Set((captures ?? []).map((c) => c.date)));
   const week = hist.slice(-7);
   const pace = hq.money.monthlyGoal ? F.monthPace(hq, today) : null;
+  const props = proposals(hq, today, hour, ctx);
+  const hhmm = `${String(hour).padStart(2, "0")}:00`;
   const score = F.lifeScore(list);
   const urgent = F.mostUrgent(list);
   const headline = score >= 100 ? "Día redondo. Todas las facetas en verde." : urgent ? urgent.headline : "Vas bien. Sostén el ritmo.";
@@ -79,6 +83,8 @@ export function CommandCenterView({ hq, today, hour, dateLabel, ctx, captures = 
         </div>
       </section>
 
+      <Proposals hq={hq} today={today} list={props} />
+
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
         {list.map((f, i) => (
           <div key={f.id} className={`flex lg:col-span-2 ${i >= 3 ? "lg:col-span-3" : ""}`}>
@@ -88,6 +94,8 @@ export function CommandCenterView({ hq, today, hour, dateLabel, ctx, captures = 
           </div>
         ))}
       </div>
+
+      <HabitsToday hq={hq} today={today} hhmm={hhmm} />
 
       <section aria-labelledby="semana-h" className="glass grid gap-5 rounded-[26px] p-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
         <div className="flex min-w-0 flex-col gap-2">

@@ -1,4 +1,6 @@
 import { z } from "zod";
+import * as H from "./habits";
+import { proposals, topIdea } from "./insights";
 import * as L from "./logic";
 import type { HqState } from "./schemas";
 
@@ -17,6 +19,13 @@ export const PushSnapshotSchema = z.object({
   dayNumber: z.number().int().min(1).max(400),
   daysLeft: z.number().int().min(0).max(400),
   mascotName: z.string().max(20),
+  /** Hábitos con hora (solo título y horario; nada de salud). */
+  habits: z.array(z.object({
+    id: z.string().max(40), title: z.string().max(50), emoji: z.string().max(8),
+    time: z.string().regex(/^\d{2}:\d{2}$/), days: z.array(z.number().int().min(0).max(6)).max(7), done: z.boolean(),
+  })).max(24).default([]),
+  /** La propuesta principal del agente, para el aviso de la mañana. */
+  idea: z.object({ title: z.string().max(120), body: z.string().max(200) }).nullable().default(null),
 });
 export type PushSnapshot = z.infer<typeof PushSnapshotSchema>;
 
@@ -24,7 +33,7 @@ const MISSION_IDS = ["train", "meals", "kcal"] as const;
 type MissionId = (typeof MISSION_IDS)[number];
 const isMission = (id: string): id is MissionId => (MISSION_IDS as readonly string[]).includes(id);
 
-export function snapshotOf(s: HqState, today: string, tz: string): PushSnapshot {
+export function snapshotOf(s: HqState, today: string, tz: string, approvedClipsThisWeek = 0): PushSnapshot {
   const required = L.missionsFor(s, today).filter((m) => m.required);
   const d = L.dayOf(s, today);
   const info = L.challengeInfo(s.profile, today);
@@ -37,14 +46,26 @@ export function snapshotOf(s: HqState, today: string, tz: string): PushSnapshot 
     dayNumber: info.dayNumber,
     daysLeft: info.daysLeft,
     mascotName: s.profile.mascotName,
+    habits: s.habits.filter((h) => h.time && h.kind === "hacer").map((h) => ({ id: h.id, title: h.title, emoji: h.emoji, time: h.time!, days: h.days, done: H.isDone(s, h, today) })),
+    idea: topIdea(proposals(s, today, 9, { journal: null, approvedClipsThisWeek })),
   };
 }
 
+/** Recordatorios que tocan ahora: ya pasó su hora (hasta 90 min) y no están marcados hoy. */
+export function dueReminders(snap: PushSnapshot | null, date: string, hhmm: string): PushSnapshot["habits"] {
+  if (!snap) return [];
+  const fresh = snap.date === date;
+  const wd = L.weekdayIndex(date);
+  const toMin = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+  const now = toMin(hhmm);
+  return snap.habits.filter((h) => h.days.includes(wd) && !(fresh && h.done) && toMin(h.time) <= now && now - toMin(h.time) <= 90);
+}
+
 /** Fecha y hora local en la zona del usuario (el cron corre en UTC). */
-export function localClock(now: Date, tz: string): { date: string; hour: number } {
-  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", hourCycle: "h23" }).formatToParts(now);
+export function localClock(now: Date, tz: string): { date: string; hour: number; hhmm: string } {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(now);
   const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "00";
-  return { date: `${get("year")}-${get("month")}-${get("day")}`, hour: Number(get("hour")) };
+  return { date: `${get("year")}-${get("month")}-${get("day")}`, hour: Number(get("hour")), hhmm: `${get("hour")}:${get("minute")}` };
 }
 
 export interface PushMessage {

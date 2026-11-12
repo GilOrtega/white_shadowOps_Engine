@@ -32,7 +32,7 @@ export function PushCard({ hq }: { hq: HqState }) {
         <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${push ? "bg-accent/15 text-accent" : "bg-white/[0.06] text-mute"}`}>{push ? "Activos" : "Apagados"}</span>
       </div>
       <p className="text-sm text-fg/85">
-        Si a las <b>2 pm</b> no has registrado comidas, a las <b>8 pm</b> te falta algo o a las <b>9 pm</b> no has entrenado, te llega un aviso aunque la app esté cerrada. Si ya cumpliste, no te molesta.
+        Tus hábitos a su hora (creatina, agua…), la idea del día de Sombra en la mañana, y si a las <b>2 pm</b> no has registrado comidas o a las <b>8–9 pm</b> te falta algo, un aviso de "Rapo a la 0". Aunque la app esté cerrada. Si ya cumpliste, no te molesta.
       </p>
       <p className="text-xs text-mute">Al servidor solo va un resumen del día (qué misiones faltan), nunca tus comidas ni tu peso.</p>
       {support === "ios-instalar" && (
@@ -56,7 +56,8 @@ export function PushCard({ hq }: { hq: HqState }) {
         <ol className="mt-2 flex list-inside list-decimal flex-col gap-1">
           <li>Corre <code className="text-accent">npm run push:keys</code> y pega las variables en Vercel.</li>
           <li>Vercel → Storage → <b>Upstash Redis</b> (gratis) y conéctalo al proyecto.</li>
-          <li>Vuelve a desplegar. Los avisos salen ~2, ~8 y ~9 pm (el plan Hobby puede moverlos dentro de esa hora).</li>
+          <li>Vuelve a desplegar. Rapo e idea del día salen con los crons diarios de Vercel.</li>
+          <li>Recordatorios a la hora exacta (creatina, agua…): en Google Cloud Scheduler crea un job cada 15 min que haga GET a <code className="text-accent">/api/cron/tick</code> con <code>Authorization: Bearer CRON_SECRET</code>.</li>
         </ol>
       </details>
     </Card>
