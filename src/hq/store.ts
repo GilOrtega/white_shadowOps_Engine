@@ -47,15 +47,39 @@ function subscribe(cb: () => void) {
   };
 }
 
-function commit(next: HqState) {
-  cache = HqStateSchema.parse(next);
+const META = "wso.hq.meta";
+/** Cuándo cambió por última vez el estado en este dispositivo (para sincronizar). */
+export function localUpdatedAt(): number {
   try {
-    window.localStorage.setItem(KEY, JSON.stringify(cache));
+    return Number(JSON.parse(window.localStorage.getItem(META) ?? "{}").updatedAt) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+function persist(state: HqState, updatedAt: number) {
+  try {
+    window.localStorage.setItem(KEY, JSON.stringify(state));
+    window.localStorage.setItem(META, JSON.stringify({ updatedAt }));
   } catch {
     /* almacenamiento lleno o bloqueado: el cambio queda en memoria */
   }
+}
+
+function commit(next: HqState) {
+  cache = HqStateSchema.parse(next);
+  persist(cache, Date.now());
   listeners.forEach((l) => l());
 }
+
+/** Adopta la copia de la nube sin perder tu clave de acceso local. */
+export function adoptCloud(state: HqState, updatedAt: number) {
+  cache = HqStateSchema.parse({ ...state, accessKey: getSnapshot().accessKey });
+  persist(cache, updatedAt);
+  listeners.forEach((l) => l());
+}
+
+export const currentState = () => getSnapshot();
 
 /** Estado actual, o null mientras carga (y en el servidor). */
 export function useHq(): HqState | null {

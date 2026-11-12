@@ -5,6 +5,7 @@ import { ProfileSchema, type HqState } from "@/hq/schemas";
 import { fileToAvatar } from "@/hq/client";
 import { actions, parseNumber, useHq } from "@/hq/store";
 import { PushCard } from "./PushCard";
+import { SyncCard } from "./SyncCard";
 import { btn, Card, H2, input, Loading, PageTitle } from "./ui";
 
 export function Settings() {
@@ -106,6 +107,8 @@ export function SettingsView({ hq }: { hq: HqState }) {
         {note("clave")}
         <p className="text-xs text-mute">Sin clave todo lo demás funciona igual: registras comidas a mano y el Coach te habla con sus reglas fijas.</p>
       </Card>
+
+      <SyncCard hq={hq} />
 
       <PushCard hq={hq} />
 

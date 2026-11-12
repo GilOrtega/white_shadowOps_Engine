@@ -1,7 +1,8 @@
 import { dueReminders, localClock, pushDecision } from "@/hq/push";
-import { kvOnce } from "@/hq/server/kv";
+import { kvConfigured, kvOnce } from "@/hq/server/kv";
 import { delSub, getState, getSub, KEYS, pushReady } from "@/hq/server/push-store";
 import { sendPush } from "@/hq/server/webpush";
+import { opsTick } from "@/ops/server/store";
 
 /**
  * Reloj de avisos: recordatorios de hábitos a su hora, "Rapo a la 0" y la idea del día (9 am).
@@ -9,14 +10,18 @@ import { sendPush } from "@/hq/server/webpush";
  *   Authorization: Bearer <CRON_SECRET>
  * Vercel Hobby solo permite crons diarios; con ellos funcionan Rapo e idea del día, no las horas exactas.
  */
+export const maxDuration = 300;
+
 export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET;
   if (!secret || req.headers.get("authorization") !== `Bearer ${secret}`) return Response.json({ code: "UNAUTHORIZED" }, { status: 401 });
+  // Agentes: retomar misiones atoradas y lanzar las automáticas (no depende de los avisos).
+  const ops = process.env.ANTHROPIC_API_KEY && kvConfigured() ? await opsTick().catch((e) => [`error:${String(e).slice(0, 80)}`]) : [];
   const ready = pushReady();
-  if (!ready.ok) return Response.json(ready, { status: 503 });
+  if (!ready.ok) return Response.json({ ...ready, ops }, { status: 503 });
 
   const [sub, snap] = await Promise.all([getSub(), getState()]);
-  if (!sub) return Response.json({ sent: [], reason: "sin suscripción" });
+  if (!sub) return Response.json({ sent: [], ops, reason: "sin suscripción" });
   const tz = snap?.tz ?? process.env.WSO_TZ ?? "America/Hermosillo";
   const { date, hour, hhmm } = localClock(new Date(), tz);
   const sent: string[] = [];
@@ -38,5 +43,5 @@ export async function GET(req: Request) {
   if (danger) await send(danger.dedupeKey, { title: danger.title, body: danger.body, tag: `wso-rapo-${date}` });
   if (hour >= 9 && hour < 12 && snap?.idea) await send(`${date}:idea`, { title: `💡 ${snap.idea.title}`, body: snap.idea.body, tag: `wso-idea-${date}` });
 
-  return Response.json({ date, hhmm, sent });
+  return Response.json({ date, hhmm, sent, ops });
 }

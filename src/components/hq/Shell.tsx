@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 import { challengeInfo } from "@/hq/logic";
 import { useLocalReminders, usePushSync } from "@/hq/push-client";
+import { useCloudSync } from "@/hq/sync-client";
 import { useHq } from "@/hq/store";
 import { useToday } from "@/hq/useToday";
 import { CommandPalette, openCommandPalette } from "./CommandPalette";
@@ -13,6 +14,7 @@ import { Icon } from "./ui";
 
 const NAV = [
   { href: "/", label: "Hoy", icon: "home" },
+  { href: "/ops", label: "Operaciones", icon: "cpu" },
   { href: "/plan", label: "Plan", icon: "target" },
   { href: "/progreso", label: "Progreso", icon: "chart" },
   { href: "/bitacora", label: "Bitácora", icon: "image" },
@@ -21,7 +23,7 @@ const NAV = [
   { href: "/ajustes", label: "Ajustes", icon: "gear" },
 ] as const;
 /** En el celular no cabe todo: el Motor se abre desde el Estudio. */
-const TABS = NAV.filter((n) => n.href !== "/engine");
+const TABS = NAV.filter((n) => n.href !== "/engine" && n.href !== "/progreso");
 
 /** El brillo del vidrio sigue al cursor: una sola escucha para toda la app. */
 function usePointerGlow() {
@@ -77,6 +79,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const todayNow = useToday();
   usePushSync(hqNow, todayNow);
   useLocalReminders(hqNow, todayNow);
+  useCloudSync(hqNow);
 
   return (
     <div className="min-h-dvh">

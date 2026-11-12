@@ -32,7 +32,7 @@ export function PushCard({ hq }: { hq: HqState }) {
         <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${push ? "bg-accent/15 text-accent" : "bg-white/[0.06] text-mute"}`}>{push ? "Activos" : "Apagados"}</span>
       </div>
       <p className="text-sm text-fg/85">
-        Tus hábitos a su hora (creatina, agua…), la idea del día de Sombra en la mañana, y si a las <b>2 pm</b> no has registrado comidas o a las <b>8–9 pm</b> te falta algo, un aviso de "Rapo a la 0". Aunque la app esté cerrada. Si ya cumpliste, no te molesta.
+        Tus hábitos a su hora (creatina, agua…), la idea del día de Sombra en la mañana, y si a las <b>2 pm</b> no has registrado comidas o a las <b>8–9 pm</b> te falta algo, un aviso de “Rapo a la 0”. Aunque la app esté cerrada. Si ya cumpliste, no te molesta.
       </p>
       <p className="text-xs text-mute">Al servidor solo va un resumen del día (qué misiones faltan), nunca tus comidas ni tu peso.</p>
       {support === "ios-instalar" && (

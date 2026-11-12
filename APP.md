@@ -10,6 +10,12 @@ La app (Next.js 16) que vive encima del motor de shorts (`ENGINE.md`).
 ## Centro de mando (pantalla Hoy)
 Arriba, tu día por **facetas**: Cuerpo (el reto), Mente (cómo vienes + Bitácora), Trabajo (bloques de enfoque y entregas de clientes), Marca (clips de la semana) y Dinero (ingresos del mes contra la meta y el ritmo). Cada una tiene su anillo, su número clave, su siguiente acción y el agente que la cuida; los anillos concéntricos dan la calificación del día y el titular dice qué sigue. Reglas puras en `src/hq/facets.ts`.
 
+## Operaciones (agentes trabajando solos)
+`/ops`: escribes una misión (o usas una plantilla) y **Sombra** la reparte entre Coach, Nutri, Estratega y Copywriter. Corre **en el servidor** (`after()` + `maxDuration` 300 s): cierras la app y siguen. Cada agente muestra su barra, tiempo y tokens, y entrega un documento en markdown; Sombra cierra con el plan de ataque y acciones que puedes **Aplicar** (hábitos, proyectos, meta de enfoque). Push al terminar.
+- Guardado en Upstash (30 días). Si el servidor se corta, `/api/cron/tick` la retoma donde se quedó (máx. 3 intentos).
+- **Automáticas**: plan de la semana (lunes ~7 am) y briefing diario (~7 am), lanzadas por el tick.
+- Los agentes leen tu centro de mando desde la **sincronización en la nube** (`/api/sync`, gana el cambio más reciente; nunca sube tu clave de acceso). Motor puro y probado: `src/ops/engine.ts`.
+
 ## Sombra propone (agente proactivo) y Rutina de hoy
 - **Propuestas** (`src/hq/insights.ts`): reglas fijas que revisan tus datos y sugieren con el dato que lo justifica; nada cambia hasta que aceptas ("Ahora no" la oculta ese día). Peso estancado → −100 kcal; bajando muy rápido → +100; entrega en ≤3 días → +1 bloque; hábito que se cae → moverlo 1 h antes; 3 días sin clip; dinero atrás del ritmo; 2 días fundido → versión ligera. "Más ideas (IA)" pide 3–4 ideas a Sombra con tu contexto (`/api/agents/ideas`).
 - **Rutina de hoy** (`src/hq/habits.ts`): hábitos con hora, días, ancla ("después de…") y tipo hacer/evitar; anillo y racha por hábito; plantillas (creatina, agua, pesarme, dormir, sin refresco…).
