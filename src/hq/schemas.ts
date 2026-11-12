@@ -154,6 +154,8 @@ export const HqStateSchema = z.object({
   money: MoneySchema.prefault({}),
   brand: BrandSchema.prefault({}),
   contentWeek: ContentWeekSchema.prefault({}),
+  /** Ejercicio de la rutina → el que usas en su lugar (id de la biblioteca de técnica). */
+  exerciseSwaps: z.record(z.string().max(30), z.string().regex(/^\d{4}$/)).default({}),
   habits: z.array(HabitSchema).max(24).default([]),
   /** Propuestas de los agentes que descartaste: id → fecha (vuelven a salir si cambian los datos). */
   dismissed: z.record(z.string().max(80), DateStr).default({}),

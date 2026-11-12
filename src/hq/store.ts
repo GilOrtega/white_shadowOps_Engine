@@ -139,6 +139,14 @@ export const actions = {
     commit({ ...s, money: { ...s.money, entries: s.money.entries.filter((e) => e.id !== id) } });
   },
   setWeeklyClips: (weeklyClips: number) => commit({ ...getSnapshot(), brand: { weeklyClips } }),
+  // --- gym ---
+  swapExercise(id: string, exerciseId: string | null) {
+    const s = getSnapshot();
+    const swaps = { ...s.exerciseSwaps };
+    if (exerciseId) swaps[id] = exerciseId;
+    else delete swaps[id];
+    commit({ ...s, exerciseSwaps: swaps });
+  },
   // --- semana de contenido ---
   setContentWeek(weekOf: string, items: ContentItem[]) {
     const s = getSnapshot();
