@@ -63,6 +63,13 @@ async function main() {
   assert.equal((checkAgentAccess(req()) as any).code, "UNAUTHORIZED");
   assert.equal((checkAgentAccess(req("otro")) as any).code, "UNAUTHORIZED");
   assert.equal(checkAgentAccess(req("secreto-de-prueba-123")).ok, true);
+  // espacios, saltos de línea o comillas pegados de más no cuentan, ni en Vercel ni en la app
+  assert.equal(checkAgentAccess(req("  secreto-de-prueba-123\n")).ok, true);
+  assert.equal(checkAgentAccess(req('"secreto-de-prueba-123"')).ok, true);
+  process.env.WSO_API_SECRET = "'secreto-de-prueba-123'\n";
+  assert.equal(checkAgentAccess(req("secreto-de-prueba-123")).ok, true);
+  assert.equal((checkAgentAccess(req("secreto-de-prueba-12")) as any).code, "UNAUTHORIZED");
+  process.env.WSO_API_SECRET = "secreto-de-prueba-123";
 
   console.log("agentes OK ✔");
 }

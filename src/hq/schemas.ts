@@ -117,6 +117,32 @@ export const BrandSchema = z.object({
   weeklyClips: z.number().int().min(1).max(21).default(3),
 });
 
+/** Semana de contenido: 7 días × 3 formatos (guion de video, carrusel, historia). */
+export const ContentFormatSchema = z.enum(["guion", "carrusel", "historia"]);
+export type ContentFormat = z.infer<typeof ContentFormatSchema>;
+export const ContentItemSchema = z.object({
+  id: z.string().min(1).max(40),
+  /** 0 = lunes … 6 = domingo. */
+  day: z.number().int().min(0).max(6),
+  format: ContentFormatSchema,
+  title: z.string().trim().min(1).max(90),
+  /** Gancho de los primeros 3 segundos / portada / pregunta de la historia. */
+  hook: z.string().max(200).default(""),
+  /** Guion por partes, láminas del carrusel o secuencia de la historia (una por línea). */
+  beats: z.array(z.string().max(240)).max(10).default([]),
+  cta: z.string().max(140).default(""),
+  pillar: z.string().max(60).default(""),
+  status: z.enum(["idea", "listo", "publicado"]).default("idea"),
+});
+export type ContentItem = z.infer<typeof ContentItemSchema>;
+export const ContentWeekSchema = z.object({
+  /** Tus temas fijos: de qué hablas siempre. */
+  pillars: z.array(z.string().trim().min(2).max(60)).max(6).default(["Reto físico: si fallo, me rapo", "Programar con IA", "Mindset y disciplina"]),
+  /** Lunes de la semana planeada (YYYY-MM-DD) o null si aún no hay plan. */
+  weekOf: DateStr.nullable().default(null),
+  items: z.array(ContentItemSchema).max(21).default([]),
+});
+
 export const HqStateSchema = z.object({
   v: z.literal(1).default(1),
   profile: ProfileSchema.prefault({}),
@@ -127,6 +153,9 @@ export const HqStateSchema = z.object({
   work: WorkSchema.prefault({}),
   money: MoneySchema.prefault({}),
   brand: BrandSchema.prefault({}),
+  contentWeek: ContentWeekSchema.prefault({}),
+  /** Ejercicio de la rutina → el que usas en su lugar (id de la biblioteca de técnica). */
+  exerciseSwaps: z.record(z.string().max(30), z.string().regex(/^\d{4}$/)).default({}),
   habits: z.array(HabitSchema).max(24).default([]),
   /** Propuestas de los agentes que descartaste: id → fecha (vuelven a salir si cambian los datos). */
   dismissed: z.record(z.string().max(80), DateStr).default({}),

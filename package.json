@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "tsx scripts/hq.selftest.ts && tsx scripts/coordinator.selftest.ts && tsx scripts/agents.selftest.ts && tsx scripts/ui.selftest.tsx && tsx scripts/miner.selftest.ts && tsx scripts/llm.selftest.ts && tsx scripts/crew.selftest.tsx && tsx scripts/push.selftest.ts && tsx scripts/facets.selftest.tsx && tsx scripts/habits.selftest.tsx && tsx scripts/ops.selftest.tsx && tsx scripts/training.selftest.ts",
+    "test": "tsx scripts/hq.selftest.ts && tsx scripts/coordinator.selftest.ts && tsx scripts/agents.selftest.ts && tsx scripts/ui.selftest.tsx && tsx scripts/miner.selftest.ts && tsx scripts/llm.selftest.ts && tsx scripts/crew.selftest.tsx && tsx scripts/push.selftest.ts && tsx scripts/facets.selftest.tsx && tsx scripts/habits.selftest.tsx && tsx scripts/ops.selftest.tsx && tsx scripts/training.selftest.ts && tsx scripts/content.selftest.ts && tsx scripts/exercises.selftest.ts",
     "test:media": "tsx scripts/media.selftest.ts",
     "test:pipeline": "tsx scripts/pipeline.selftest.ts",
     "pipeline": "tsx --env-file=.env.local scripts/pipeline.ts",

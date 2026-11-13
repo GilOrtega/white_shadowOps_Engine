@@ -1,4 +1,5 @@
 import type { HqState, Plan } from "./schemas";
+import { EXERCISES } from "./exercise-db.gen";
 
 /**
  * Programa de entrenamiento del reto. Reglas fijas y conservadoras (las del Coach):
@@ -150,6 +151,12 @@ export const rxLine = (r: Rx) => `${LIB[r.id]!.name} ${r.sets}×${r.reps[0]}–$
 export interface LiftLog { kg: number | null; reps: number[] }
 
 /** Última vez que hiciste ese ejercicio (antes de `date`). */
+/**
+ * Llave del registro: si cambiaste el ejercicio por otro, su progreso se lleva aparte
+ * (no se comparan kilos de sentadilla con kilos de prensa).
+ */
+export const logKey = (id: string, swap?: string | null) => (swap ? `${id}~${swap}` : id);
+
 export function lastLog(s: HqState, id: string, date: string): { date: string; log: LiftLog } | null {
   const dates = Object.keys(s.days).filter((d) => d < date).sort().reverse();
   for (const d of dates) {
@@ -166,7 +173,9 @@ export function suggestion(s: HqState, r: Rx, date: string, phase: Phase): strin
   if (!last || last.log.kg === null) return `Elige un peso que te deje ${phase.rir} reps en reserva en la última serie.`;
   const { kg, reps } = last.log;
   const done = reps.filter((x) => x > 0);
-  const step = LIB[r.id]!.lower ? 5 : 2.5;
+  const [base, swapId] = r.id.split("~");
+  const light = swapId ? ["Mancuernas", "Polea", "Liga", "Kettlebell"].includes(EXERCISES[swapId]?.equipment ?? "") : false;
+  const step = LIB[base!]!.lower && !light ? 5 : 2.5;
   if (kg === 0) {
     if (done.length >= r.sets && done.every((x) => x >= r.reps[1])) return `Completaste ${r.reps[1]} con tu peso: hoy agrega 2.5 kg con cinturón o una pausa de 2 s abajo.`;
     return `La vez pasada (tu peso): ${done.join(", ")}. Busca ${r.reps[1]} reps en todas.`;

@@ -92,6 +92,8 @@ const paths: Record<string, ReactNode> = {
   home: <><path d="M4 11.5 12 4l8 7.5" /><path d="M6 10v9.500h12V10" /></>,
   target: <><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="5" /><circle cx="12" cy="12" r="1" /></>,
   chart: <path d="M5 20V11M12 20V4M19 20v-6" />,
+  calendar: <><rect x="4" y="5" width="16" height="15" rx="3" /><path d="M8 3v4M16 3v4M4 10h16" /></>,
+  menu: <path d="M5 7h14M5 12h14M5 17h14" />,
   video: <><rect x="6" y="2.5" width="12" height="19" rx="3" /><path d="M10.5 9.500l4 2.5-4 2.500z" /></>,
   gear: <><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.900l2.1 2.100M17 17l2.1 2.100M4.9 19.100L7 17M17 7l2.1-2.1" /></>,
   camera: <><path d="M4 8h3l2-3h6l2 3h3v11H4z" /><circle cx="12" cy="13" r="3.5" /></>,

@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { dayOf } from "./logic";
-import { defaultState, HabitSchema, HqStateSchema, IncomeSchema, MealSchema, ProjectSchema, type DayLog, type Habit, type Feeling, type HqState, type Meal, type Plan, type Profile } from "./schemas";
+import { ContentItemSchema, defaultState, HabitSchema, HqStateSchema, IncomeSchema, MealSchema, ProjectSchema, type ContentItem, type DayLog, type Habit, type Feeling, type HqState, type Meal, type Plan, type Profile } from "./schemas";
 
 /**
  * Guardado del centro de mando. Hoy vive en este navegador (localStorage);
@@ -139,6 +139,28 @@ export const actions = {
     commit({ ...s, money: { ...s.money, entries: s.money.entries.filter((e) => e.id !== id) } });
   },
   setWeeklyClips: (weeklyClips: number) => commit({ ...getSnapshot(), brand: { weeklyClips } }),
+  // --- gym ---
+  swapExercise(id: string, exerciseId: string | null) {
+    const s = getSnapshot();
+    const swaps = { ...s.exerciseSwaps };
+    if (exerciseId) swaps[id] = exerciseId;
+    else delete swaps[id];
+    commit({ ...s, exerciseSwaps: swaps });
+  },
+  // --- semana de contenido ---
+  setContentWeek(weekOf: string, items: ContentItem[]) {
+    const s = getSnapshot();
+    commit({ ...s, contentWeek: { ...s.contentWeek, weekOf, items: items.map((i) => ContentItemSchema.parse(i)).slice(0, 21) } });
+  },
+  updateContentItem(id: string, patch: Partial<Omit<ContentItem, "id" | "day" | "format">>) {
+    const s = getSnapshot();
+    commit({ ...s, contentWeek: { ...s.contentWeek, items: s.contentWeek.items.map((i) => (i.id === id ? ContentItemSchema.parse({ ...i, ...patch }) : i)) } });
+  },
+  setPillars(pillars: string[]) {
+    const s = getSnapshot();
+    const clean = pillars.map((p) => p.trim()).filter((p) => p.length >= 2).slice(0, 6);
+    commit({ ...s, contentWeek: { ...s.contentWeek, pillars: clean } });
+  },
   // --- hábitos ---
   addHabit(h: Omit<Habit, "id" | "createdAt"> & { createdAt?: string }, today: string) {
     const s = getSnapshot();

@@ -1,7 +1,7 @@
 "use client";
 
 /** Llamada a un agente con IA. Nunca lanza: regresa el dato o un mensaje para mostrar. */
-export async function callAgent<T>(path: "/api/agents/nutri" | "/api/agents/coach" | "/api/agents/mascota" | "/api/agents/copy" | "/api/agents/ideas", body: unknown, accessKey: string): Promise<{ ok: true; data: T } | { ok: false; code: string; message: string }> {
+export async function callAgent<T>(path: "/api/agents/nutri" | "/api/agents/coach" | "/api/agents/mascota" | "/api/agents/copy" | "/api/agents/ideas" | "/api/agents/content", body: unknown, accessKey: string): Promise<{ ok: true; data: T } | { ok: false; code: string; message: string }> {
   if (process.env.WSO_STATIC) {
     return { ok: false, code: "NOT_CONFIGURED", message: "En esta versión de arranque los agentes con IA están apagados; se activan cuando la app quede en Vercel." };
   }

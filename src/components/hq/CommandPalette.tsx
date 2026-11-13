@@ -18,6 +18,7 @@ const CMDS: Cmd[] = [
   { id: "plan", label: "Plan de ataque", group: "Ir a", icon: "target", href: "/plan", keywords: "estratega semana" },
   { id: "progreso", label: "Progreso", group: "Ir a", icon: "chart", href: "/progreso", keywords: "peso tendencia" },
   { id: "bitacora", label: "Bitácora", group: "Ir a", icon: "image", href: "/bitacora", keywords: "capturas fotos linea tiempo" },
+  { id: "contenido", label: "Semana de contenido", group: "Ir a", icon: "calendar", href: "/contenido", keywords: "guion carrusel historia calendario marca ideas" },
   { id: "shorts", label: "Shorts", group: "Ir a", icon: "video", href: "/engine", keywords: "motor clips tiktok" },
   { id: "ajustes", label: "Ajustes", group: "Ir a", icon: "gear", href: "/ajustes", keywords: "perfil clave respaldo" },
   { id: "captura", label: "Subir captura del día", group: "Acciones", icon: "upload", href: "/bitacora?nueva=inicio", keywords: "foto imagen screenshot" },
