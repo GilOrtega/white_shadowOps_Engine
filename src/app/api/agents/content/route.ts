@@ -2,7 +2,10 @@ import { z } from "zod";
 import { AnthropicStructuredLlm, isEngineError } from "@/engine";
 import { checkAgentAccess, deny } from "@/hq/server/auth";
 
-/** Agente de Marca: arma la semana de contenido (7 días × guion, carrusel e historia). */
+/**
+ * Agente de Marca: arma la semana de contenido (7 días × guion, carrusel e historia).
+ * Criterios de guion adaptados de JustCarlos30/skills-videos-cortos (MIT, © 2026 Carlos Jarero).
+ */
 export const maxDuration = 120;
 
 const Body = z.object({
@@ -39,6 +42,12 @@ Reglas:
 - Reparte sus temas ("pillars") a lo largo de la semana; no repitas títulos de "lastTitles".
 - Ideas concretas que él pueda grabar con su celular hoy: su día real, su avance, su código, sus errores. Nada de promesas falsas ni cifras inventadas: si hace falta un número, escribe [tu dato].
 - Ganchos que paren el scroll, en tono directo y mexicano, sin frases vacías ni emojis de relleno.
+- Promesa = entrega: lo que anuncia el gancho o la portada se cumple dentro de la misma pieza (si promete pasos, da los pasos; si promete un resultado, muéstralo).
+- Entrada sin contexto previo: que lo entienda alguien que no conoce la serie; explica "esto" o la herramienta en una frase o di qué mostrar en pantalla.
+- Cada parte avanza: una idea, una demostración o algo nuevo por parte; nada de rodeos.
+- Concreto y creíble: un ejemplo de su día, su código o su avance que se pueda recordar.
+- El cierre resuelve la pregunta del inicio; no lo sustituyas por "comenta abajo". No fuerces llamada a la acción en todo.
+- Varía la estructura en la semana (observación, comparación, demostración, escena de humor); no repitas problema → fracaso → aprendizaje siete veces.
 - Nada médico: no recetes dietas, suplementos ni dosis.`;
 
 export async function POST(req: Request) {

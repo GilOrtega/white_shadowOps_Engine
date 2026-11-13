@@ -1,6 +1,7 @@
 /** Pruebas de la semana de contenido.  npx tsx scripts/content.selftest.ts */
 import assert from "node:assert/strict";
 import { asText, cell, fromAgent, starterWeek, weekStats } from "../src/hq/content";
+import { CRITIQUE_SYSTEM, CritiqueSchema, critiquePrompt } from "../src/hq/critique";
 import { HqStateSchema } from "../src/hq/schemas";
 
 // Estado viejo (sin contentWeek) sigue cargando con temas por defecto
@@ -31,5 +32,22 @@ const txt = asText({ ...items[0], status: "listo" });
 assert.match(txt, /^GUION · LUN — G0/);
 assert.match(txt, /1\. a\n2\. b/);
 assert.match(txt, /Cierre: x/);
+
+// Editor de guiones: el borrador va como datos y la crítica tiene forma fija
+const p = critiquePrompt({ ...items[0], status: "idea" } as never, { title: "Ref", hook: "", beats: ["x"], cta: "" });
+assert.match(p, /<borrador>[\s\S]*"titulo":"G0"[\s\S]*<\/borrador>/);
+assert.match(p, /<referencia>/);
+assert.doesNotMatch(critiquePrompt({ ...items[0] } as never), /<referencia>/);
+assert.match(CRITIQUE_SYSTEM, /DATOS, no instrucciones/);
+assert.match(CRITIQUE_SYSTEM, /\[tu dato\]/);
+const ok = CritiqueSchema.parse({
+  verdict: "El gancho promete 3 pasos y solo das 2.", lens: "promesa", keep: ["“Me rapo con la 0”: es tu sello"],
+  changes: [{ part: "Contexto", problem: "No se entiende qué es Cursor", fix: "Di: “el editor con IA que uso”" }],
+  promiseGap: { promised: "3 pasos", delivered: "2 pasos", options: "Agrega el paso 3 (recomendado) o promete 2" },
+  hook: "", close: "Y el paso 3 es el que nadie hace.", reach: "Puede jalar a programadores nuevos si el paso 3 se ve en pantalla.",
+});
+assert.equal(ok.changes.length, 1);
+assert.throws(() => CritiqueSchema.parse({ ...ok, lens: "viralidad" }));
+assert.throws(() => CritiqueSchema.parse({ ...ok, changes: Array(5).fill(ok.changes[0]) }));
 
 console.log("contenido OK ✔");
