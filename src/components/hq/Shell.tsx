@@ -19,6 +19,7 @@ const GROUPS: { id: string; label: string; items: NavItem[] }[] = [
   { id: "dia", label: "Tu día", items: [
     { href: "/", label: "Hoy", icon: "home" },
     { href: "/plan", label: "Plan", icon: "target" },
+    { href: "/nutri", label: "Nutriólogo", icon: "leaf" },
     { href: "/progreso", label: "Progreso", icon: "chart" },
     { href: "/bitacora", label: "Bitácora", icon: "image" },
   ] },

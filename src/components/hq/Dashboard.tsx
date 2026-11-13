@@ -13,6 +13,7 @@ import { CommandCenter, WorkMoney } from "./CommandCenter";
 import { Fold, FoldIndex } from "./Fold";
 import { DayChecklist, GymBanner, SombraEvolution, TodayHeader } from "./Flames";
 import { Hero } from "./Hero";
+import { NutriTip } from "../nutri/Nutri";
 import { HabitsToday } from "./Proactive";
 import { Mascot } from "./Mascot";
 import { TodayCapture } from "./Journal";
@@ -78,6 +79,7 @@ export function DashboardView({ hq, today, hour = 12 }: { hq: HqState; today: st
 
       <Fold id="comidas-fold" title="Comidas" tone="text-accent"
         summary={`${kcal.toLocaleString("es-MX")} de ${hq.profile.calorieTarget.toLocaleString("es-MX")} kcal · ${day.meals.length} ${day.meals.length === 1 ? "comida" : "comidas"}`}>
+        <NutriTip hq={hq} today={today} hour={hour} />
         <div className="grid items-start gap-4 lg:grid-cols-2">
           <div id="comidas" className="scroll-mt-6"><MealLogger hq={hq} today={today} /></div>
           <DailyFuel hq={hq} today={today} />
