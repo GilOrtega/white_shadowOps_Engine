@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { AnthropicStructuredLlm, MinerResponseSchema } from "../src/engine";
-import { toToolInputSchema } from "../src/engine/core/llm";
+import { toToolInputSchema, workspaceHeaders } from "../src/engine/core/llm";
 
 async function main() {
   const js = toToolInputSchema(MinerResponseSchema);
@@ -26,6 +26,19 @@ async function main() {
   assert.equal(last.type, "tool_result"); assert.equal(last.is_error, true);
   console.log("LLM retry OK ✔\n--- error devuelto al modelo ---\n" + last.content);
 }
+
+function workspaceTest() {
+  delete process.env.ANTHROPIC_WORKSPACE_ID;
+  if (workspaceHeaders() !== undefined) throw new Error("sin workspace no debe mandar encabezado");
+  process.env.ANTHROPIC_WORKSPACE_ID = " wrkspc_123 ";
+  const h = workspaceHeaders();
+  if (!h || h["anthropic-workspace-id"] !== "wrkspc_123") throw new Error("encabezado de workspace incorrecto");
+  delete process.env.ANTHROPIC_WORKSPACE_ID;
+  console.log("workspace header OK ✔");
+}
+
+// Llaves sin workspace: se manda el encabezado solo si está configurado
+workspaceTest();
 
 main().catch((e) => {
   console.error(e);
