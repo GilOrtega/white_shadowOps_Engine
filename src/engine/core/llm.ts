@@ -56,6 +56,15 @@ export function toToolInputSchema(schema: z.ZodType): Anthropic.Messages.Tool.In
  * JSON Schema; aun así validamos con Zod (refinements, rangos, etc.) y,
  * si falla, le regresamos el error como `tool_result` para que corrija.
  */
+/**
+ * Llaves de Anthropic que no están dentro de un workspace necesitan decir cuál usar.
+ * Pon ANTHROPIC_WORKSPACE_ID (wrkspc_…) en Vercel, o usa una llave creada dentro de un workspace.
+ */
+export function workspaceHeaders(): Record<string, string> | undefined {
+  const id = process.env.ANTHROPIC_WORKSPACE_ID?.trim();
+  return id ? { "anthropic-workspace-id": id } : undefined;
+}
+
 export class AnthropicStructuredLlm implements StructuredLlm {
   private readonly client: Anthropic;
   private readonly defaultModel: string;
@@ -66,6 +75,7 @@ export class AnthropicStructuredLlm implements StructuredLlm {
       opts.client ??
       new Anthropic({
         apiKey: opts.apiKey ?? env?.ANTHROPIC_API_KEY,
+        defaultHeaders: workspaceHeaders(),
         maxRetries: 3, // 429 / 5xx / errores de red con backoff exponencial
         timeout: 120_000,
       });
