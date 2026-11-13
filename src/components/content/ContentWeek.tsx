@@ -6,6 +6,7 @@ import { callAgent } from "@/hq/client";
 import * as C from "@/hq/content";
 import { weekStart } from "@/hq/facets";
 import * as L from "@/hq/logic";
+import type { Critique } from "@/hq/critique";
 import type { ContentFormat, ContentItem, HqState } from "@/hq/schemas";
 import { actions, useHq } from "@/hq/store";
 import { useToday } from "@/hq/useToday";
@@ -114,7 +115,7 @@ export function ContentWeekView({ hq, today }: { hq: HqState; today: string }) {
 
       <p className="text-xs text-mute">¿Ya grabaste el video? Súbelo al <Link href="/crew" className="font-semibold text-iris">Estudio de shorts</Link> para que el Crew lo corte y le ponga subtítulos.</p>
 
-      {open && <Detail item={open} onClose={() => setOpenId(null)} />}
+      {open && <Detail item={open} hq={hq} onClose={() => setOpenId(null)} />}
     </div>
   );
 }
@@ -195,11 +196,41 @@ const STATUS: { id: ContentItem["status"]; label: string }[] = [
   { id: "publicado", label: "Publicado" },
 ];
 
-function Detail({ item, onClose }: { item: ContentItem; onClose: () => void }) {
+/** Críticas de esta sesión por casilla, para no volver a pedirla al reabrir. */
+const critiques = new Map<string, { key: string; data: Critique }>();
+const draftKey = (d: { title: string; hook: string; beats: string; cta: string }) => JSON.stringify(d);
+
+function Detail({ item, hq, onClose }: { item: ContentItem; hq: HqState; onClose: () => void }) {
   const ref = useRef<HTMLDialogElement>(null);
   const f = C.FORMATS.find((x) => x.id === item.format)!;
   const [draft, setDraft] = useState({ title: item.title, hook: item.hook, beats: item.beats.join("\n"), cta: item.cta });
   const [copied, setCopied] = useState(false);
+  const cached = critiques.get(item.id);
+  const [critique, setCritique] = useState<Critique | null>(cached?.data ?? null);
+  const [critiqued, setCritiqued] = useState<string | null>(cached?.key ?? null);
+  const [reviewing, setReviewing] = useState(false);
+  const [reviewErr, setReviewErr] = useState<string | null>(null);
+  const outdated = critique !== null && critiqued !== draftKey(draft);
+
+  async function review() {
+    setReviewing(true);
+    setReviewErr(null);
+    const beats = draft.beats.split("\n").map((b) => b.trim()).filter(Boolean).slice(0, 10);
+    const ref = hq.contentWeek.items.find((i) => i.format === item.format && i.status === "publicado" && i.id !== item.id) ?? null;
+    const res = await callAgent<Critique>("/api/agents/critique", {
+      item: { format: item.format, pillar: item.pillar, title: draft.title.slice(0, 90), hook: draft.hook.slice(0, 200), beats: beats.map((b) => b.slice(0, 240)), cta: draft.cta.slice(0, 140) },
+      compare: ref && { title: ref.title, hook: ref.hook, beats: ref.beats, cta: ref.cta },
+    }, hq.accessKey);
+    if (res.ok) {
+      const key = draftKey(draft);
+      critiques.set(item.id, { key, data: res.data });
+      setCritique(res.data);
+      setCritiqued(key);
+    } else {
+      setReviewErr(res.message);
+    }
+    setReviewing(false);
+  }
 
   useEffect(() => {
     const d = ref.current;
@@ -240,6 +271,20 @@ function Detail({ item, onClose }: { item: ContentItem; onClose: () => void }) {
             <input className={input} value={draft.cta} maxLength={140} onChange={(e) => setDraft({ ...draft, cta: e.target.value })} />
           </label>
         )}
+        <section aria-label="Consejos para este guion" className="flex flex-col gap-3 rounded-2xl border border-iris/25 bg-iris/[0.06] p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[13px] text-fg/85"><span className="font-semibold text-iris">Coach de contenido.</span> Consejos para que este video pegue más, antes de grabarlo.</p>
+            <button type="button" className={btn.ai} disabled={reviewing} onClick={() => void review()}>
+              <Icon name="sparkle" size={16} />{reviewing ? "Pensando consejos…" : critique ? (outdated ? "Consejos para esta versión" : "Más consejos") : "Dame consejos"}
+            </button>
+          </div>
+          {reviewErr && <p role="status" className="text-[13px] text-amber">{reviewErr}</p>}
+          {critique && (
+            <CritiqueView c={critique} outdated={outdated}
+              onHook={(h) => setDraft({ ...draft, hook: h })}
+              onClose={(c) => setDraft({ ...draft, cta: c })} />
+          )}
+        </section>
         <div role="group" aria-label="Estado" className="flex flex-wrap gap-2">
           {STATUS.map((s) => (
             <button key={s.id} type="button" aria-pressed={item.status === s.id} onClick={() => { save(); actions.updateContentItem(item.id, { status: s.id }); }}
@@ -260,6 +305,62 @@ function Detail({ item, onClose }: { item: ContentItem; onClose: () => void }) {
         </div>
       </div>
     </dialog>
+  );
+}
+
+const LENS: Record<Critique["lens"], string> = {
+  promesa: "Promesa vs. entrega", entrada: "Se entiende desde cero", progresion: "Avance", concrecion: "Concreto y creíble", cierre: "Cierre", voz: "Tu voz",
+};
+
+function CritiqueView({ c, outdated, onHook, onClose }: { c: Critique; outdated: boolean; onHook: (h: string) => void; onClose: (c: string) => void }) {
+  return (
+    <div className={`flex flex-col gap-3 text-[13px] leading-snug ${outdated ? "opacity-60" : ""}`}>
+      {outdated && <p className="text-[12px] text-amber">Cambiaste el borrador: estos consejos son de la versión anterior.</p>}
+      <p className="text-[15px] font-semibold text-fg">{c.verdict}</p>
+      <p className="text-[12px] text-mute">Enfócate en: <span className="font-semibold text-iris">{LENS[c.lens]}</span></p>
+      {c.promiseGap && (
+        <div className="rounded-xl bg-amber/10 p-2.5">
+          <p className="font-semibold text-amber">Cumple lo que prometes</p>
+          <p><span className="text-mute">El gancho promete:</span> {c.promiseGap.promised}</p>
+          <p><span className="text-mute">El video da:</span> {c.promiseGap.delivered}</p>
+          <p className="mt-1">{c.promiseGap.options}</p>
+        </div>
+      )}
+      {c.changes.length > 0 && (
+        <ol className="flex flex-col gap-2">
+          {c.changes.map((ch, i) => (
+            <li key={i} className="rounded-xl bg-black/25 p-2.5">
+              <p className="font-semibold text-lime">Consejo {i + 1}: {ch.fix}</p>
+              <p className="mt-0.5 text-fg/85">{ch.problem}</p>
+              <p className="mt-0.5 text-[12px] text-mute">En: “{ch.part}”</p>
+            </li>
+          ))}
+        </ol>
+      )}
+      {c.keep.length > 0 && (
+        <div>
+          <p className="font-semibold text-mint">Esto ya funciona, déjalo</p>
+          <ul className="list-disc pl-5">{c.keep.map((k) => <li key={k}>{k}</li>)}</ul>
+        </div>
+      )}
+      {(c.hook || c.close) && (
+        <div className="flex flex-col gap-2">
+          {c.hook && (
+            <div className="flex flex-wrap items-center gap-2 rounded-xl bg-black/25 p-2.5">
+              <p className="min-w-0 flex-1"><span className="text-mute">Prueba este gancho:</span> {c.hook}</p>
+              <button type="button" className={btn.chip} onClick={() => onHook(c.hook)}>Usar</button>
+            </div>
+          )}
+          {c.close && (
+            <div className="flex flex-wrap items-center gap-2 rounded-xl bg-black/25 p-2.5">
+              <p className="min-w-0 flex-1"><span className="text-mute">Prueba este cierre:</span> {c.close}</p>
+              <button type="button" className={btn.chip} onClick={() => onClose(c.close)}>Usar</button>
+            </div>
+          )}
+        </div>
+      )}
+      <p className="text-[12px] text-mute"><span className="font-semibold">Para llegar a más gente:</span> {c.reach}</p>
+    </div>
   );
 }
 
