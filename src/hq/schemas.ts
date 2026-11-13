@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { NutritionSchema } from "./nutrition-schema";
 import { RadarStateSchema } from "./radar";
 
 /** Modelo de datos del centro de mando. Todo lo que se guarda pasa por estos esquemas. */
@@ -161,6 +162,8 @@ export const HqStateSchema = z.object({
   money: MoneySchema.prefault({}),
   brand: BrandSchema.prefault({}),
   contentWeek: ContentWeekSchema.prefault({}),
+  /** Nutriólogo: tus datos para calcular calorías y macros, y tus cambios al menú. */
+  nutrition: NutritionSchema.prefault({}),
   /** Radar del nicho: ideas encontradas en la web con su fuente. */
   radar: RadarStateSchema.prefault({}),
   /** Ejercicio de la rutina → el que usas en su lugar (id de la biblioteca de técnica). */

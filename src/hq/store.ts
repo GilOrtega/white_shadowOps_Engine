@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { dayOf } from "./logic";
+import { NutritionSchema } from "./nutrition-schema";
 import type { RadarIdea } from "./radar";
 import { ContentItemSchema, defaultState, HabitSchema, HqStateSchema, IncomeSchema, MealSchema, ProjectSchema, type ContentItem, type DayLog, type Habit, type Feeling, type HqState, type Meal, type Plan, type Profile } from "./schemas";
 
@@ -140,6 +141,23 @@ export const actions = {
     commit({ ...s, money: { ...s.money, entries: s.money.entries.filter((e) => e.id !== id) } });
   },
   setWeeklyClips: (weeklyClips: number) => commit({ ...getSnapshot(), brand: { weeklyClips } }),
+  // --- nutriólogo ---
+  setNutrition(patch: Partial<Omit<HqState["nutrition"], "swaps" | "skip">>) {
+    const s = getSnapshot();
+    commit({ ...s, nutrition: NutritionSchema.parse({ ...s.nutrition, ...patch }) });
+  },
+  swapDish(key: string, dishId: string | null) {
+    const s = getSnapshot();
+    const swaps = { ...s.nutrition.swaps };
+    if (dishId) swaps[key] = dishId;
+    else delete swaps[key];
+    commit({ ...s, nutrition: { ...s.nutrition, swaps } });
+  },
+  toggleSkipDish(dishId: string) {
+    const s = getSnapshot();
+    const skip = s.nutrition.skip.includes(dishId) ? s.nutrition.skip.filter((x) => x !== dishId) : [...s.nutrition.skip, dishId].slice(-60);
+    commit({ ...s, nutrition: { ...s.nutrition, skip } });
+  },
   // --- gym ---
   swapExercise(id: string, exerciseId: string | null) {
     const s = getSnapshot();

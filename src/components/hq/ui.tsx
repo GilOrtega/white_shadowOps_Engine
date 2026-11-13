@@ -95,6 +95,7 @@ const paths: Record<string, ReactNode> = {
   calendar: <><rect x="4" y="5" width="16" height="15" rx="3" /><path d="M8 3v4M16 3v4M4 10h16" /></>,
   menu: <path d="M5 7h14M5 12h14M5 17h14" />,
   plus: <path d="M12 5v14M5 12h14" />,
+  leaf: <><path d="M5 19c0-8 5-13 14-14 0 9-5 14-13 14z" /><path d="M5 19 13 11" /></>,
   video: <><rect x="6" y="2.5" width="12" height="19" rx="3" /><path d="M10.5 9.500l4 2.5-4 2.500z" /></>,
   gear: <><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.900l2.1 2.100M17 17l2.1 2.100M4.9 19.100L7 17M17 7l2.1-2.1" /></>,
   camera: <><path d="M4 8h3l2-3h6l2 3h3v11H4z" /><circle cx="12" cy="13" r="3.5" /></>,
