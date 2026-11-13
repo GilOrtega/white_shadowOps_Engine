@@ -5,8 +5,9 @@ import { collectSources, DRAFT_SYSTEM, draftPrompt, finalizeIdeas, RadarDraftSch
 type MessagesClient = { messages: { create: (body: Anthropic.Messages.MessageCreateParamsNonStreaming, opts?: { signal?: AbortSignal }) => Promise<Anthropic.Messages.Message> } };
 
 /** Paso 1: el modelo busca en la web (herramienta del servidor) y resume hallazgos. */
-export async function research(client: MessagesClient, args: { niche: string; pillars: string[]; today: string; model: string; signal?: AbortSignal }) {
-  const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: researchPrompt(args.niche, args.pillars, args.today) }];
+export async function research(client: MessagesClient, args: { niche: string; pillars: string[]; today: string; model: string; signal?: AbortSignal; insist?: boolean }) {
+  const ask = researchPrompt(args.niche, args.pillars, args.today) + (args.insist ? "\nIMPORTANTE: usa la herramienta web_search al menos 3 veces antes de responder; no contestes de memoria." : "");
+  const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: ask }];
   const found: { title: string; url: string; page_age?: string | null }[] = [];
   const trace: string[] = [];
   let text = "";
@@ -38,7 +39,9 @@ export async function research(client: MessagesClient, args: { niche: string; pi
 }
 
 export async function runRadar(deps: { client: MessagesClient; llm: StructuredLlm }, args: { niche: string; pillars: string[]; today: string; model: string; signal?: AbortSignal }): Promise<{ ideas: RadarIdea[]; sources: RadarSource[] }> {
-  const { findings, sources, trace } = await research(deps.client, args);
+  let { findings, sources, trace } = await research(deps.client, args);
+  // A veces el modelo contesta sin buscar: un segundo intento pidiéndole explícitamente que busque.
+  if (!sources.length) ({ findings, sources, trace } = await research(deps.client, { ...args, insist: true }));
   if (!sources.length || !findings) {
     console.warn("[radar] sin fuentes", JSON.stringify({ trace, findingsChars: findings.length }));
     return { ideas: [], sources };

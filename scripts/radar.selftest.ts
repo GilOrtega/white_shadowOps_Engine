@@ -53,9 +53,12 @@ assert.ok((calls[0] as { tools: { type: string }[] }).tools.some((t) => t.type =
 assert.deepEqual(out.ideas.map((i) => i.title), ["Día 26 del reto", "Mi setup"]);
 assert.equal(out.ideas[0]!.sources[0]!.url, "https://y.com/reto");
 
-// Sin fuentes no inventa ideas
-const empty = await runRadar({ client: { messages: { create: async () => ({ stop_reason: "end_turn", content: [{ type: "text", text: "nada", citations: null }] }) } } as never, llm: llm as never }, { niche: "x y z", pillars: [], today: "2026-11-12", model: "fake" });
+// Sin fuentes no inventa ideas (y reintenta una vez pidiendo buscar)
+const prompts: string[] = [];
+const empty = await runRadar({ client: { messages: { create: async (b: { messages: { content: string }[] }) => { prompts.push(String(b.messages[0]!.content)); return { stop_reason: "end_turn", content: [{ type: "text", text: "nada", citations: null }] }; } } } as never, llm: llm as never }, { niche: "x y z", pillars: [], today: "2026-11-12", model: "fake" });
 assert.equal(empty.ideas.length, 0);
+assert.equal(prompts.length, 2, "reintenta una vez");
+assert.match(prompts[1]!, /usa la herramienta web_search/);
 
 // Estado viejo carga con radar vacío
 assert.deepEqual(HqStateSchema.parse({ v: 1 }).radar, { niche: "", ranAt: null, ideas: [], used: [] });
