@@ -271,11 +271,11 @@ function Detail({ item, hq, onClose }: { item: ContentItem; hq: HqState; onClose
             <input className={input} value={draft.cta} maxLength={140} onChange={(e) => setDraft({ ...draft, cta: e.target.value })} />
           </label>
         )}
-        <section aria-label="Editor de guiones" className="flex flex-col gap-3 rounded-2xl border border-iris/25 bg-iris/[0.06] p-3">
+        <section aria-label="Consejos para este guion" className="flex flex-col gap-3 rounded-2xl border border-iris/25 bg-iris/[0.06] p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-[13px] text-fg/85"><span className="font-semibold text-iris">Editor.</span> Te dice qué conservar y qué cambiar antes de grabar.</p>
+            <p className="text-[13px] text-fg/85"><span className="font-semibold text-iris">Coach de contenido.</span> Consejos para que este video pegue más, antes de grabarlo.</p>
             <button type="button" className={btn.ai} disabled={reviewing} onClick={() => void review()}>
-              <Icon name="sparkle" size={16} />{reviewing ? "Leyendo tu guion…" : critique ? (outdated ? "Revisar de nuevo" : "Otra opinión") : "Critícame este guion"}
+              <Icon name="sparkle" size={16} />{reviewing ? "Pensando consejos…" : critique ? (outdated ? "Consejos para esta versión" : "Más consejos") : "Dame consejos"}
             </button>
           </div>
           {reviewErr && <p role="status" className="text-[13px] text-amber">{reviewErr}</p>}
@@ -315,14 +315,14 @@ const LENS: Record<Critique["lens"], string> = {
 function CritiqueView({ c, outdated, onHook, onClose }: { c: Critique; outdated: boolean; onHook: (h: string) => void; onClose: (c: string) => void }) {
   return (
     <div className={`flex flex-col gap-3 text-[13px] leading-snug ${outdated ? "opacity-60" : ""}`}>
-      {outdated && <p className="text-[12px] text-amber">Cambiaste el borrador: esta crítica es de la versión anterior.</p>}
+      {outdated && <p className="text-[12px] text-amber">Cambiaste el borrador: estos consejos son de la versión anterior.</p>}
       <p className="text-[15px] font-semibold text-fg">{c.verdict}</p>
-      <p className="text-[12px] text-mute">Lo más importante: <span className="font-semibold text-iris">{LENS[c.lens]}</span></p>
+      <p className="text-[12px] text-mute">Enfócate en: <span className="font-semibold text-iris">{LENS[c.lens]}</span></p>
       {c.promiseGap && (
         <div className="rounded-xl bg-amber/10 p-2.5">
-          <p className="font-semibold text-amber">Prometes algo que no entregas</p>
-          <p><span className="text-mute">Anuncias:</span> {c.promiseGap.promised}</p>
-          <p><span className="text-mute">Entregas:</span> {c.promiseGap.delivered}</p>
+          <p className="font-semibold text-amber">Cumple lo que prometes</p>
+          <p><span className="text-mute">El gancho promete:</span> {c.promiseGap.promised}</p>
+          <p><span className="text-mute">El video da:</span> {c.promiseGap.delivered}</p>
           <p className="mt-1">{c.promiseGap.options}</p>
         </div>
       )}
@@ -330,16 +330,16 @@ function CritiqueView({ c, outdated, onHook, onClose }: { c: Critique; outdated:
         <ol className="flex flex-col gap-2">
           {c.changes.map((ch, i) => (
             <li key={i} className="rounded-xl bg-black/25 p-2.5">
-              <p className="text-mute">“{ch.part}”</p>
-              <p className="mt-0.5">{ch.problem}</p>
-              <p className="mt-1 text-lime">→ {ch.fix}</p>
+              <p className="font-semibold text-lime">Consejo {i + 1}: {ch.fix}</p>
+              <p className="mt-0.5 text-fg/85">{ch.problem}</p>
+              <p className="mt-0.5 text-[12px] text-mute">En: “{ch.part}”</p>
             </li>
           ))}
         </ol>
       )}
       {c.keep.length > 0 && (
         <div>
-          <p className="font-semibold text-mint">Consérvalo</p>
+          <p className="font-semibold text-mint">Esto ya funciona, déjalo</p>
           <ul className="list-disc pl-5">{c.keep.map((k) => <li key={k}>{k}</li>)}</ul>
         </div>
       )}
@@ -347,19 +347,19 @@ function CritiqueView({ c, outdated, onHook, onClose }: { c: Critique; outdated:
         <div className="flex flex-col gap-2">
           {c.hook && (
             <div className="flex flex-wrap items-center gap-2 rounded-xl bg-black/25 p-2.5">
-              <p className="min-w-0 flex-1"><span className="text-mute">Gancho propuesto:</span> {c.hook}</p>
+              <p className="min-w-0 flex-1"><span className="text-mute">Prueba este gancho:</span> {c.hook}</p>
               <button type="button" className={btn.chip} onClick={() => onHook(c.hook)}>Usar</button>
             </div>
           )}
           {c.close && (
             <div className="flex flex-wrap items-center gap-2 rounded-xl bg-black/25 p-2.5">
-              <p className="min-w-0 flex-1"><span className="text-mute">Cierre propuesto:</span> {c.close}</p>
+              <p className="min-w-0 flex-1"><span className="text-mute">Prueba este cierre:</span> {c.close}</p>
               <button type="button" className={btn.chip} onClick={() => onClose(c.close)}>Usar</button>
             </div>
           )}
         </div>
       )}
-      <p className="text-[12px] text-mute"><span className="font-semibold">Alcance:</span> {c.reach}</p>
+      <p className="text-[12px] text-mute"><span className="font-semibold">Para llegar a más gente:</span> {c.reach}</p>
     </div>
   );
 }
