@@ -3,6 +3,7 @@
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import type { HqState } from "./schemas";
 import { adoptCloud, currentState, localUpdatedAt } from "./store";
+import { decide, isEmptyState } from "./sync-rules";
 
 /**
  * Sincroniza este dispositivo con la nube: al abrir trae lo más nuevo; al cambiar algo
@@ -41,9 +42,10 @@ export async function pullNow(key: string) {
   try {
     const r = await call("GET", key);
     if (r.status !== 200) return set({ kind: r.status === 503 ? "off" : "error", at: null, message: r.json?.message ?? "No se pudo sincronizar" });
-    const cloud = r.json?.cloud;
-    if (cloud && cloud.updatedAt > localUpdatedAt()) adoptCloud(cloud.state, cloud.updatedAt);
-    else if (localUpdatedAt() > (cloud?.updatedAt ?? 0)) await pushNow(key);
+    const cloud = r.json?.cloud ?? null;
+    const d = decide(currentState(), localUpdatedAt(), cloud);
+    if (d === "adopt" && cloud) adoptCloud(cloud.state, Math.max(cloud.updatedAt, localUpdatedAt()));
+    else if (d === "push") await pushNow(key);
     set({ kind: "ok", at: Date.now(), message: "Sincronizado" });
   } catch {
     set({ kind: "error", at: null, message: "Sin conexión: guardado en este dispositivo" });
@@ -51,9 +53,11 @@ export async function pullNow(key: string) {
 }
 
 export async function pushNow(key: string) {
+  // Un dispositivo sin datos no sube nada: así no borra lo que tienes en otro lado.
+  if (isEmptyState(currentState())) return set({ kind: "ok", at: Date.now(), message: "Sin datos aquí todavía" });
   try {
     const r = await call("PUT", key, { state: currentState(), updatedAt: localUpdatedAt() || Date.now(), device: deviceId() });
-    if (r.status === 409 && r.json?.cloud) adoptCloud(r.json.cloud.state, r.json.cloud.updatedAt);
+    if (r.status === 409 && r.json?.cloud && !isEmptyState(r.json.cloud.state)) adoptCloud(r.json.cloud.state, r.json.cloud.updatedAt);
     else if (r.status !== 200) return set({ kind: r.status === 503 ? "off" : "error", at: null, message: r.json?.message ?? "No se pudo subir" });
     set({ kind: "ok", at: Date.now(), message: "Sincronizado" });
   } catch {
