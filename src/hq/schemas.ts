@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { RadarStateSchema } from "./radar";
 
 /** Modelo de datos del centro de mando. Todo lo que se guarda pasa por estos esquemas. */
 export const DateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha AAAA-MM-DD");
@@ -160,6 +161,8 @@ export const HqStateSchema = z.object({
   money: MoneySchema.prefault({}),
   brand: BrandSchema.prefault({}),
   contentWeek: ContentWeekSchema.prefault({}),
+  /** Radar del nicho: ideas encontradas en la web con su fuente. */
+  radar: RadarStateSchema.prefault({}),
   /** Ejercicio de la rutina → el que usas en su lugar (id de la biblioteca de técnica). */
   exerciseSwaps: z.record(z.string().max(30), z.string().regex(/^\d{4}$/)).default({}),
   habits: z.array(HabitSchema).max(24).default([]),

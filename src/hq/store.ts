@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { dayOf } from "./logic";
+import type { RadarIdea } from "./radar";
 import { ContentItemSchema, defaultState, HabitSchema, HqStateSchema, IncomeSchema, MealSchema, ProjectSchema, type ContentItem, type DayLog, type Habit, type Feeling, type HqState, type Meal, type Plan, type Profile } from "./schemas";
 
 /**
@@ -155,6 +156,30 @@ export const actions = {
   updateContentItem(id: string, patch: Partial<Omit<ContentItem, "id" | "day" | "format">>) {
     const s = getSnapshot();
     commit({ ...s, contentWeek: { ...s.contentWeek, items: s.contentWeek.items.map((i) => (i.id === id ? ContentItemSchema.parse({ ...i, ...patch }) : i)) } });
+  },
+  /** Pone una pieza en su casilla (día + formato) de la semana; si la semana está vacía, la arma primero. */
+  placeContent(weekOf: string, item: Omit<ContentItem, "id" | "status"> & { status?: ContentItem["status"] }, starter: () => ContentItem[]) {
+    const s = getSnapshot();
+    const base = s.contentWeek.items.length && s.contentWeek.weekOf === weekOf ? s.contentWeek.items : starter();
+    const next = ContentItemSchema.parse({ ...item, id: Math.random().toString(36).slice(2, 10), status: item.status ?? "idea" });
+    const items = [...base.filter((i) => !(i.day === next.day && i.format === next.format)), next].sort((a, b) => a.day - b.day);
+    commit({ ...s, contentWeek: { ...s.contentWeek, weekOf, items: items.slice(0, 21) } });
+  },
+  setRadar(niche: string, ideas: RadarIdea[], ranAt: string) {
+    const s = getSnapshot();
+    commit({ ...s, radar: { ...s.radar, niche: niche.slice(0, 140), ideas: ideas.slice(0, 15), ranAt } });
+  },
+  setRadarNiche(niche: string) {
+    const s = getSnapshot();
+    commit({ ...s, radar: { ...s.radar, niche: niche.slice(0, 140) } });
+  },
+  markRadarUsed(id: string) {
+    const s = getSnapshot();
+    if (!s.radar.used.includes(id)) commit({ ...s, radar: { ...s.radar, used: [...s.radar.used, id].slice(-60) } });
+  },
+  dismissRadarIdea(id: string) {
+    const s = getSnapshot();
+    commit({ ...s, radar: { ...s.radar, ideas: s.radar.ideas.filter((i) => i.id !== id) } });
   },
   setPillars(pillars: string[]) {
     const s = getSnapshot();
