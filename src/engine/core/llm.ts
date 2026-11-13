@@ -122,7 +122,9 @@ export class AnthropicStructuredLlm implements StructuredLlm {
           throw new EngineError("ABORTED", "Operación cancelada", { cause });
         }
         const status = cause instanceof Anthropic.APIError ? cause.status : undefined;
-        throw new EngineError("LLM_REQUEST_FAILED", `Fallo la llamada al modelo (${status ?? "red"})`, {
+        // El mensaje de Anthropic dice el motivo (modelo, saldo, esquema…); nunca incluye la llave.
+        const detail = cause instanceof Anthropic.APIError ? String(cause.message).replace(/sk-ant-[\w-]+/g, "[llave]").slice(0, 300) : "";
+        throw new EngineError("LLM_REQUEST_FAILED", `Fallo la llamada al modelo (${status ?? "red"})${detail ? `: ${detail}` : ""}`, {
           retryable: status === undefined || status === 429 || status >= 500,
           cause,
         });
