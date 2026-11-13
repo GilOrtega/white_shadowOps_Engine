@@ -103,7 +103,7 @@ export function proposals(s: HqState, today: string, hour: number, ctx: F.FacetC
       id: "work-add-projects", facet: "trabajo", agent: "Estratega", priority: 3,
       title: "Registra tus proyectos de clientes",
       why: "Sin fechas de entrega no puedo avisarte cuando una se acerca ni repartirte el enfoque.",
-      action: { kind: "link", href: "#trabajo", label: "Ir a Trabajo" }, cta: "Agregar proyecto",
+      action: { kind: "link", href: "/yo#trabajo", label: "Ir a Trabajo" }, cta: "Agregar proyecto",
     });
   }
 
@@ -125,7 +125,7 @@ export function proposals(s: HqState, today: string, hour: number, ctx: F.FacetC
       id: "money-goal", facet: "dinero", agent: "Estratega", priority: 3,
       title: "Ponle meta de ingresos al mes",
       why: "Con meta te digo cada día si vas al ritmo y cuánto falta.",
-      action: { kind: "link", href: "#dinero", label: "Poner meta" }, cta: "Poner meta",
+      action: { kind: "link", href: "/yo#dinero", label: "Poner meta" }, cta: "Poner meta",
     });
   } else {
     const income = F.monthIncome(s, today);
@@ -135,7 +135,7 @@ export function proposals(s: HqState, today: string, hour: number, ctx: F.FacetC
         id: `money-behind-${today.slice(0, 7)}-${Math.round(income)}`, facet: "dinero", agent: "Estratega", priority: 1,
         title: "Cobra o cotiza hoy",
         why: `Llevas $${Math.round(income).toLocaleString("es-MX")} y al ritmo deberías ir en $${Math.round(pace).toLocaleString("es-MX")}. Un anticipo pendiente o una cotización enviada hoy cambia el mes.`,
-        action: { kind: "link", href: "#dinero", label: "Ir a Dinero" }, cta: "Ver Dinero",
+        action: { kind: "link", href: "/yo#dinero", label: "Ir a Dinero" }, cta: "Ver Dinero",
       });
     }
   }

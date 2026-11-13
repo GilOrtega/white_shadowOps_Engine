@@ -139,7 +139,7 @@ function Dock({ hq, today, hour, journal }: { hq: HqState; today: string; hour: 
           )}
 
           <Link
-            href="/#sombra"
+            href="/progreso#sombra"
             onClick={() => setOpen(false)}
             className="mt-3 flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] py-2.5 text-[14px] font-medium text-mute hover:bg-white/[0.08] hover:text-fg"
           >

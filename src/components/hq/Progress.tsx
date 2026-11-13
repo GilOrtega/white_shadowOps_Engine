@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import * as L from "@/hq/logic";
 import type { HqState } from "@/hq/schemas";
 import { actions, parseNumber, useHq } from "@/hq/store";
-import { useToday } from "@/hq/useToday";
+import { useHour, useToday } from "@/hq/useToday";
+import { BodyTop } from "./Dashboard";
 import { btn, Card, H2, input, Loading, PageTitle } from "./ui";
 import { GhostTip } from "./Journal";
 import { pageTip } from "@/hq/coordinator";
@@ -13,13 +14,14 @@ import { WeightChart } from "./WeightChart";
 export function Progress() {
   const hq = useHq();
   const today = useToday();
-  if (!hq || !today) return <Loading />;
-  return <ProgressView hq={hq} today={today} />;
+  const hour = useHour();
+  if (!hq || !today || hour === null) return <Loading />;
+  return <ProgressView hq={hq} today={today} top={<BodyTop hq={hq} today={today} hour={hour} />} />;
 }
 
 const fmtDay = (d: string) => new Intl.DateTimeFormat("es-MX", { weekday: "short", day: "numeric", month: "short" }).format(L.parseDate(d));
 
-export function ProgressView({ hq, today }: { hq: HqState; today: string }) {
+export function ProgressView({ hq, today, top }: { hq: HqState; today: string; top?: ReactNode }) {
   const series = L.weightSeries(hq);
   const rate = L.weeklyRate(series);
   const trend = series.at(-1)?.trend ?? hq.profile.startWeightKg;
@@ -39,8 +41,9 @@ export function ProgressView({ hq, today }: { hq: HqState; today: string }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageTitle title="Progreso" sub="Lo que cuenta es la tendencia" />
+      <PageTitle title="Progreso" sub="Tu Sombra, tu apuesta y lo que cuenta: la tendencia" />
       <GhostTip name={hq.profile.mascotName} text={pageTip("/progreso", hq, today, null)} />
+      {top}
 
       <dl className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {stats.map((s) => (

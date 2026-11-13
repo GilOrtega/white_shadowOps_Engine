@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, type ReactNode } from "react";
 import { challengeInfo } from "@/hq/logic";
 import { useLocalReminders, usePushSync } from "@/hq/push-client";
 import { useCloudSync } from "@/hq/sync-client";
@@ -15,31 +14,59 @@ import { GhostDock, GhostGlyph } from "./GhostDock";
 import { Icon } from "./ui";
 
 type NavItem = { href: string; label: string; icon: string };
-const GROUPS: { id: string; label: string; items: NavItem[] }[] = [
-  { id: "dia", label: "Tu día", items: [
-    { href: "/", label: "Hoy", icon: "home" },
-    { href: "/plan", label: "Plan", icon: "target" },
-    { href: "/nutri", label: "Nutriólogo", icon: "leaf" },
+type Section = { id: string; label: string; icon: string; items: NavItem[] };
+/**
+ * Las 5 secciones de la app. Cada una responde una pregunta:
+ * Hoy (¿qué hago hoy?), Cuerpo (¿cómo va mi reto?), Contenido (¿qué publico?),
+ * Agentes (¿qué hacen mis agentes?) y Yo (¿cómo va el resto de mi vida?).
+ */
+export const SECTIONS: Section[] = [
+  { id: "hoy", label: "Hoy", icon: "home", items: [{ href: "/", label: "Hoy", icon: "home" }] },
+  { id: "cuerpo", label: "Cuerpo", icon: "flame", items: [
     { href: "/progreso", label: "Progreso", icon: "chart" },
-    { href: "/bitacora", label: "Bitácora", icon: "image" },
+    { href: "/plan", label: "Entreno", icon: "target" },
+    { href: "/nutri", label: "Nutrición", icon: "leaf" },
+    { href: "/habitos", label: "Hábitos", icon: "check" },
+    { href: "/bitacora", label: "Fotos", icon: "image" },
   ] },
-  { id: "contenido", label: "Contenido", items: [
-    { href: "/contenido", label: "Semana de contenido", icon: "calendar" },
-    { href: "/crew", label: "Shorts", icon: "sparkles" },
+  { id: "contenido", label: "Contenido", icon: "calendar", items: [
+    { href: "/contenido", label: "Semana", icon: "calendar" },
+    { href: "/radar", label: "Radar", icon: "search" },
+    { href: "/crew", label: "Estudio", icon: "sparkles" },
     { href: "/engine", label: "Motor", icon: "video" },
   ] },
-  { id: "sistema", label: "Sistema", items: [
-    { href: "/ops", label: "Operaciones", icon: "cpu" },
+  { id: "agentes", label: "Agentes", icon: "cpu", items: [
+    { href: "/ops", label: "En marcha", icon: "cpu" },
+    { href: "/equipo", label: "Ideas y equipo", icon: "sparkle" },
+  ] },
+  { id: "yo", label: "Yo", icon: "user", items: [
+    { href: "/yo", label: "Mi vida", icon: "user" },
     { href: "/ajustes", label: "Ajustes", icon: "gear" },
   ] },
 ];
-/** En el celular: 4 pestañas fijas y el resto en el menú desplegable. */
-const TABS: NavItem[] = [
-  { href: "/", label: "Hoy", icon: "home" },
-  { href: "/contenido", label: "Contenido", icon: "calendar" },
-  { href: "/plan", label: "Plan", icon: "target" },
-  { href: "/ops", label: "Agentes", icon: "cpu" },
-];
+const isOn = (path: string, href: string) => (href === "/" ? path === "/" : path === href || path.startsWith(`${href}/`));
+export const sectionOf = (path: string) => SECTIONS.find((s) => s.items.some((i) => isOn(path, i.href))) ?? SECTIONS[0]!;
+
+/** Sub-pestañas arriba de la página (solo en secciones con más de una vista). */
+function SectionTabs({ path }: { path: string }) {
+  const sec = sectionOf(path);
+  if (sec.items.length < 2) return null;
+  return (
+    <nav aria-label={sec.label} className="-mx-4 mb-5 flex items-center gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:px-0">
+      <div className="glass flex shrink-0 gap-1 rounded-2xl p-1">
+        {sec.items.map((n) => {
+          const on = isOn(path, n.href);
+          return (
+            <Link key={n.href} href={n.href} aria-current={on ? "page" : undefined}
+              className={`flex min-h-10 items-center gap-1.5 whitespace-nowrap rounded-xl px-2.5 text-[13px] font-semibold transition-colors sm:px-3.5 sm:text-[14px] ${on ? "bg-white/[0.12] text-fg shadow-[inset_0_1px_0_rgb(255_255_255/0.08)]" : "text-mute hover:text-fg"}`}>
+              <span className="hidden sm:inline"><Icon name={n.icon} size={15} strokeWidth={on ? 2.3 : 1.9} /></span>{n.label}
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
 
 /** El brillo del vidrio sigue al cursor: una sola escucha para toda la app. */
 function usePointerGlow() {
@@ -87,7 +114,7 @@ function ProfileChip() {
   );
 }
 
-type Group = (typeof GROUPS)[number];
+type Group = Section;
 
 /** Grupo plegable de la barra lateral; recuerda si lo cerraste. */
 function NavGroup({ group, active }: { group: Group; active: (href: string) => boolean }) {
@@ -95,6 +122,7 @@ function NavGroup({ group, active }: { group: Group; active: (href: string) => b
   const key = `nav:${group.id}`;
   const hasActive = group.items.some((i) => active(i.href));
   const open = hasActive || (prefs.open?.[key] ?? true);
+  if (group.items.length === 1) return <SideLink n={{ ...group.items[0]!, icon: group.icon }} on={hasActive} />;
   return (
     <div className="flex flex-col">
       <button type="button" aria-expanded={open} disabled={hasActive} onClick={() => setUiPrefs({ open: { ...prefs.open, [key]: !open } })}
@@ -129,54 +157,10 @@ function SideLink({ n, on }: { n: NavItem; on: boolean }) {
   );
 }
 
-/** Botón "Menú" del celular: despliega todas las secciones agrupadas. */
-function MobileMenu({ active }: { active: (href: string) => boolean }) {
-  const [open, setOpen] = useState(false);
-  const path = usePathname();
-  const inMenu = !TABS.some((t) => active(t.href));
-  // Al navegar se cierra solo.
-  const [lastPath, setLastPath] = useState(path);
-  if (path !== lastPath) {
-    setLastPath(path);
-    setOpen(false);
-  }
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
-  return (
-    <>
-      <button type="button" aria-expanded={open} aria-controls="menu-movil" onClick={() => setOpen(!open)}
-        className={`flex h-[3.6rem] flex-col items-center justify-center gap-1 text-[10px] font-medium ${open || inMenu ? "text-lime" : "text-mute"}`}>
-        <Icon name={open ? "x" : "menu"} size={22} strokeWidth={open || inMenu ? 2.3 : 1.8} />
-        Menú
-      </button>
-      {open && createPortal(
-        <div className="fixed inset-0 z-[25] md:hidden">
-          <button type="button" aria-label="Cerrar menú" tabIndex={-1} className="absolute inset-0 cursor-default bg-black/60 backdrop-blur-sm" onClick={() => setOpen(false)} />
-          <div id="menu-movil" role="dialog" aria-label="Menú" className="wso-in absolute inset-x-3 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom))+4.4rem)] flex max-h-[70dvh] flex-col gap-3 overflow-y-auto rounded-[22px] border border-white/10 bg-panel-solid p-3 shadow-2xl">
-            <button type="button" onClick={() => { setOpen(false); openCommandPalette(); }} className="flex h-11 items-center gap-2 rounded-xl border border-white/[0.08] bg-black/20 px-3 text-[14px] text-mute">
-              <Icon name="search" size={16} />Buscar o ir a…
-            </button>
-            {GROUPS.map((g) => (
-              <div key={g.id} className="flex flex-col gap-0.5">
-                <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-mute/80">{g.label}</p>
-                {g.items.map((n) => <SideLink key={n.href} n={n} on={active(n.href)} />)}
-              </div>
-            ))}
-          </div>
-        </div>,
-        document.body,
-      )}
-    </>
-  );
-}
-
 export function Shell({ children }: { children: ReactNode }) {
   const path = usePathname();
-  const active = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
+  const active = (href: string) => isOn(path, href);
+  const current = sectionOf(path);
   usePointerGlow();
   const hqNow = useHq();
   const todayNow = useToday();
@@ -210,7 +194,7 @@ export function Shell({ children }: { children: ReactNode }) {
         </button>
 
         <div className="-mx-1 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-1">
-          {GROUPS.map((g) => <NavGroup key={g.id} group={g} active={active} />)}
+          {SECTIONS.map((g) => <NavGroup key={g.id} group={g} active={active} />)}
         </div>
 
         <div className="mt-auto border-t border-white/[0.06] pt-2">
@@ -220,6 +204,7 @@ export function Shell({ children }: { children: ReactNode }) {
 
       <div className="md:pl-[244px]">
         <main className="mx-auto w-full min-w-0 max-w-[1080px] px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[calc(8rem+env(safe-area-inset-bottom))] md:px-10 md:pt-9 md:pb-16">
+          <SectionTabs path={path} />
           <div key={path} className="wso-in">
             {children}
           </div>
@@ -231,21 +216,20 @@ export function Shell({ children }: { children: ReactNode }) {
         className="glass glass-strong fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 rounded-[22px] md:hidden"
       >
         <div className="grid grid-cols-5 px-1">
-          {TABS.map((n) => {
-            const on = active(n.href);
+          {SECTIONS.map((sec) => {
+            const on = sec.id === current.id;
             return (
               <Link
-                key={n.href}
-                href={n.href}
+                key={sec.id}
+                href={sec.items[0]!.href}
                 aria-current={on ? "page" : undefined}
                 className={`flex h-[3.6rem] flex-col items-center justify-center gap-1 text-[10px] font-medium ${on ? "text-lime" : "text-mute"}`}
               >
-                <Icon name={n.icon} size={22} strokeWidth={on ? 2.3 : 1.8} />
-                {n.label}
+                <Icon name={sec.icon} size={22} strokeWidth={on ? 2.3 : 1.8} />
+                {sec.label}
               </Link>
             );
           })}
-          <MobileMenu active={active} />
         </div>
       </nav>
 

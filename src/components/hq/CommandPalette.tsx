@@ -15,18 +15,24 @@ interface Cmd {
 
 const CMDS: Cmd[] = [
   { id: "hoy", label: "Hoy", group: "Ir a", icon: "home", href: "/", keywords: "inicio dashboard" },
-  { id: "plan", label: "Plan de ataque", group: "Ir a", icon: "target", href: "/plan", keywords: "estratega semana" },
+  { id: "plan", label: "Entreno (plan de gym)", group: "Ir a", icon: "target", href: "/plan", keywords: "estratega semana rutina gym ejercicios" },
+  { id: "habitos", label: "Hábitos", group: "Ir a", icon: "check", href: "/habitos", keywords: "creatina agua dormir recordatorios rutina" },
   { id: "progreso", label: "Progreso", group: "Ir a", icon: "chart", href: "/progreso", keywords: "peso tendencia" },
   { id: "bitacora", label: "Bitácora", group: "Ir a", icon: "image", href: "/bitacora", keywords: "capturas fotos linea tiempo" },
   { id: "nutri", label: "Nutriólogo", group: "Ir a", icon: "leaf", href: "/nutri", keywords: "comida dieta menu calorias proteina macros super nutriologo" },
   { id: "contenido", label: "Semana de contenido", group: "Ir a", icon: "calendar", href: "/contenido", keywords: "guion carrusel historia calendario marca ideas" },
-  { id: "shorts", label: "Shorts", group: "Ir a", icon: "video", href: "/engine", keywords: "motor clips tiktok" },
+  { id: "radar", label: "Radar del nicho", group: "Ir a", icon: "search", href: "/radar", keywords: "ideas tendencias nicho publicaciones" },
+  { id: "estudio", label: "Estudio de shorts", group: "Ir a", icon: "sparkles", href: "/crew", keywords: "crew clips subir video" },
+  { id: "shorts", label: "Motor de shorts", group: "Ir a", icon: "video", href: "/engine", keywords: "motor clips tiktok" },
+  { id: "ops", label: "Agentes en marcha", group: "Ir a", icon: "cpu", href: "/ops", keywords: "operaciones misiones agentes autonomos" },
+  { id: "equipo", label: "Ideas y equipo", group: "Ir a", icon: "sparkle", href: "/equipo", keywords: "propuestas sombra propone equipo" },
+  { id: "yo", label: "Mi vida", group: "Ir a", icon: "user", href: "/yo", keywords: "trabajo dinero clientes facetas historia inforcom" },
   { id: "ajustes", label: "Ajustes", group: "Ir a", icon: "gear", href: "/ajustes", keywords: "perfil clave respaldo" },
   { id: "captura", label: "Subir captura del día", group: "Acciones", icon: "upload", href: "/bitacora?nueva=inicio", keywords: "foto imagen screenshot" },
   { id: "comida", label: "Registrar comida", group: "Acciones", icon: "fork", href: "/#comidas", keywords: "calorias nutri" },
   { id: "peso", label: "Registrar pesaje", group: "Acciones", icon: "scale", href: "/progreso#pesaje", keywords: "peso bascula kg" },
   { id: "antes", label: "Ver antes y ahora", group: "Acciones", icon: "compare", href: "/bitacora#antes-y-ahora", keywords: "comparar" },
-  { id: "sombra", label: "Platicar con Sombra", group: "Acciones", icon: "sparkle", href: "/#sombra", keywords: "mascota chat ia" },
+  { id: "sombra", label: "Platicar con Sombra", group: "Acciones", icon: "sparkle", href: "/progreso#sombra", keywords: "mascota chat ia" },
 ];
 
 const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
