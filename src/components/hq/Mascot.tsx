@@ -3,6 +3,7 @@
 import { useState, useSyncExternalStore } from "react";
 import type { MascotAnswer, MascotRequest } from "@/hq/agents/mascota";
 import { callAgent } from "@/hq/client";
+import * as F from "@/hq/flames";
 import * as L from "@/hq/logic";
 import type { HqState } from "@/hq/schemas";
 import { setGhostActivity, useGhostActivity } from "@/hq/ui-prefs";
@@ -12,7 +13,94 @@ import { btn, input } from "./ui";
  * Sombra, la mascota original de WhiteShadow: un fantasma blanco con banda de gym.
  * Dibujo con volumen (luz arriba, sombra abajo), mejillas y brillo en los ojos; cambia de cara según el ánimo.
  */
-export function MascotFace({ mood, size = 96, thinking = false }: { mood: L.Mood; size?: number; thinking?: boolean }) {
+// --- Formas de evolución (diseño original de WhiteShadow) ---------------------------
+/** Flama unitaria: base en (0,0), punta hacia arriba, alto 1. */
+const FLAME = "M0 0C-.46 0-.52-.42-.3-.68-.26-.5-.12-.46-.08-.56-.14-.82.04-1 .12-1 .1-.8.52-.62.47-.3.44-.1.26 0 0 0Z";
+/** Rayo unitario: arriba en (0,0), alto 1. */
+const BOLT = "M.05 0 .38 .44 .2 .46 .42 1 -.04 .38 .14 .37 -.12 0Z";
+const PALETTE: Record<F.FormId, { aura: string; outer: string; inner: string; bolt: string }> = {
+  base: { aura: "transparent", outer: "#ff9f43", inner: "#ffe08a", bolt: "#fff36b" },
+  chispa: { aura: "#ff9f43", outer: "#ff8a2a", inner: "#ffd36b", bolt: "#fff36b" },
+  tormenta: { aura: "#ffb347", outer: "#ff7a1a", inner: "#ffe08a", bolt: "#fff36b" },
+  furia: { aura: "#5fb4ff", outer: "#3d8bff", inner: "#bfe6ff", bolt: "#e9f7ff" },
+  bestia: { aura: "#9a7bff", outer: "#6d5bff", inner: "#c6f432", bolt: "#f6ff9e" },
+};
+
+function Flame({ x, y, h, c, delay = 0, tilt = 0 }: { x: number; y: number; h: number; c: (typeof PALETTE)["base"]; delay?: number; tilt?: number }) {
+  return (
+    <g transform={`translate(${x} ${y}) rotate(${tilt})`}>
+      <g className="wso-flicker" style={{ animationDelay: `${delay}s`, transformOrigin: "0 0" }}>
+        <path d={FLAME} transform={`scale(${h * 0.7} ${h})`} fill={c.outer} />
+        <path d={FLAME} transform={`scale(${h * 0.38} ${h * 0.58})`} fill={c.inner} />
+      </g>
+    </g>
+  );
+}
+
+function Bolt({ x, y, h, color, delay = 0, flip = false }: { x: number; y: number; h: number; color: string; delay?: number; flip?: boolean }) {
+  return (
+    <path d={BOLT} transform={`translate(${x} ${y}) scale(${flip ? -h : h} ${h})`} fill={color} stroke="#fff" strokeWidth={0.04} strokeLinejoin="round"
+      className="wso-zap" style={{ animationDelay: `${delay}s` }} />
+  );
+}
+
+/** Lo que va DETRÁS del cuerpo: aura y flamas grandes. */
+function FormBack({ form, charge }: { form: F.FormId; charge: number }) {
+  const c = PALETTE[form];
+  const id = `aura-${form}`;
+  const glow = form === "base" ? 0.22 * charge : form === "chispa" ? 0.45 : form === "tormenta" ? 0.6 : 0.75;
+  const auraColor = form === "base" ? PALETTE.chispa.aura : c.aura;
+  return (
+    <g>
+      <defs>
+        <radialGradient id={id} cx="50%" cy="55%" r="50%">
+          <stop offset="0%" stopColor={auraColor} stopOpacity={glow} />
+          <stop offset="70%" stopColor={auraColor} stopOpacity={glow * 0.35} />
+          <stop offset="100%" stopColor={auraColor} stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      {glow > 0 && <ellipse className="wso-aura" cx="60" cy="66" rx={form === "bestia" ? 70 : 60} ry={form === "bestia" ? 74 : 64} fill={`url(#${id})`} />}
+      {(form === "tormenta" || form === "furia" || form === "bestia") && (
+        <>
+          <Flame x={22} y={92} h={form === "tormenta" ? 30 : 40} c={c} delay={0.1} tilt={-18} />
+          <Flame x={98} y={92} h={form === "tormenta" ? 30 : 40} c={c} delay={0.35} tilt={18} />
+          <Flame x={34} y={40} h={form === "tormenta" ? 30 : 38} c={c} delay={0.2} tilt={-12} />
+          <Flame x={86} y={40} h={form === "tormenta" ? 30 : 38} c={c} delay={0.5} tilt={12} />
+        </>
+      )}
+      {(form === "furia" || form === "bestia") && (
+        <>
+          <Flame x={12} y={120} h={30} c={c} delay={0.6} tilt={-25} />
+          <Flame x={108} y={120} h={30} c={c} delay={0.15} tilt={25} />
+        </>
+      )}
+    </g>
+  );
+}
+
+/** Lo que va DELANTE: corona de flamas y rayos. */
+function FormFront({ form }: { form: F.FormId }) {
+  const c = PALETTE[form];
+  if (form === "base") return null;
+  const big = form === "bestia" ? 1.35 : form === "furia" ? 1.2 : form === "tormenta" ? 1.05 : 0.8;
+  return (
+    <g>
+      <Flame x={60} y={20} h={26 * big} c={c} delay={0} />
+      <Flame x={46} y={24} h={17 * big} c={c} delay={0.25} tilt={-14} />
+      <Flame x={74} y={24} h={17 * big} c={c} delay={0.45} tilt={14} />
+      {form !== "chispa" && (
+        <>
+          <Bolt x={-6} y={30} h={34} color={c.bolt} delay={0} />
+          <Bolt x={124} y={44} h={30} color={c.bolt} delay={0.7} flip />
+          {(form === "furia" || form === "bestia") && <><Bolt x={112} y={4} h={24} color={c.bolt} delay={1.2} flip /><Bolt x={2} y={92} h={22} color={c.bolt} delay={0.4} /></>}
+        </>
+      )}
+    </g>
+  );
+}
+
+export function MascotFace({ mood, size = 96, thinking = false, form = "base", charge = 0 }: { mood: L.Mood; size?: number; thinking?: boolean; form?: F.FormId; charge?: number }) {
+  if (form !== "base" || charge > 0) return <EvolvedGhost mood={mood} size={size} form={form} charge={charge} />;
   const happy = mood === "fiesta";
   const eyes = happy ? (
     <g fill="none" stroke="#111" strokeWidth="3.4" strokeLinecap="round"><path d="M40 60q7-9 14 0" /><path d="M66 60q7-9 14 0" /></g>
@@ -58,6 +146,86 @@ export function MascotFace({ mood, size = 96, thinking = false }: { mood: L.Mood
           <circle cx="60" cy="8" r="4" fill="#c6f432" /><circle cx="112" cy="70" r="3" fill="#8cc1ff" /><circle cx="14" cy="96" r="3.5" fill="#c6f432" opacity="0.8" />
         </g>
       )}
+    </svg>
+  );
+}
+
+/**
+ * Sombra con su forma de evolución. Mismo fantasma, con aura, flamas y rayos según las semanas perfectas seguidas;
+ * en "bestia" el cuerpo cambia: hombros anchos, pecho, abdomen y pose de doble bíceps.
+ */
+function EvolvedGhost({ mood, size, form, charge }: { mood: L.Mood; size: number; form: F.FormId; charge: number }) {
+  const beast = form === "bestia";
+  const fierce = form === "tormenta" || form === "furia" || beast;
+  const eyeGlow = form === "furia" ? "#bfe6ff" : beast ? "#c6f432" : null;
+  const body = beast
+    ? "M60 14c30 0 44 15 44 36v55q-9 9-18 0-8.7-9-17.3 0-8.7 9-17.4 0-8.7-9-17.3 0-9 9-18 0V50c0-21 14-36 44-36z"
+    : "M60 12c22 0 35 16 35 37v56q-8.75 9-17.5 0-8.75-9-17.5 0-8.75 9-17.5 0-8.75-9-17.5 0V49C25 28 38 12 60 12z";
+  const label = `Sombra, forma ${F.FORMS.find((f) => f.id === form)?.name ?? form}, ánimo: ${mood}`;
+  return (
+    <svg width={size} height={(size * 160) / 148} viewBox="-14 -22 148 160" role="img" aria-label={label}>
+      <FormBack form={form} charge={charge} />
+      <ellipse className="wso-shadow fill-fg" cx="60" cy="126" rx={beast ? 40 : 30} ry="5" opacity="0.2" />
+      <g className={beast ? "wso-bounce" : "wso-float"}>
+        {beast ? (
+          <g className="stroke-ghost" fill="none" strokeLinecap="round" strokeLinejoin="round">
+            {/* doble bíceps: hombro → codo → puño */}
+            <path d="M24 62 6 58 4 34" strokeWidth="17" />
+            <path d="M96 62l18-4 2-24" strokeWidth="17" />
+          </g>
+        ) : (
+          <g fill="none" className="stroke-ghost" strokeWidth="11" strokeLinecap="round">
+            <path d="M29 68q-16-6-15-23" /><path d="M91 68q16-6 15-23" />
+          </g>
+        )}
+        {beast && (
+          <g>
+            {/* bíceps marcados y puños */}
+            <g className="fill-ghost stroke-edge" strokeWidth="1.5">
+              <ellipse cx="12" cy="52" rx="12" ry="10.5" transform="rotate(-20 12 52)" />
+              <ellipse cx="108" cy="52" rx="12" ry="10.5" transform="rotate(20 108 52)" />
+              <circle cx="4" cy="30" r="8.5" /><circle cx="116" cy="30" r="8.5" />
+            </g>
+            <g fill="none" className="stroke-ghost-shade" strokeWidth="2.4" strokeLinecap="round">
+              <path d="M2 58q9 2 18-4" /><path d="M118 58q-9 2-18-4" />
+              <path d="M0 32q4 3 8 0" /><path d="M120 32q-4 3-8 0" />
+            </g>
+            <path d="M6 46q5-5 11-4" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" opacity="0.9" />
+            <path d="M114 46q-5-5-11-4" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" opacity="0.6" />
+          </g>
+        )}
+        <path d={body} className="fill-ghost stroke-edge" strokeWidth="1.5" />
+        <path d={beast ? "M104 50v55q-9 9-18 0-4-4-8-4c15-8 22-25 22-46 0-12-3-22-9-30 9 6 13 17 13 25z" : "M95 49v56q-8.75 9-17.5 0-4-4-8-4c14-8 20-24 20-44 0-12-3-22-9-30 9 6 14.5 16 14.5 22z"} className="fill-ghost-shade" opacity="0.55" />
+        <path d={beast ? "M34 34q7-13 20-16" : "M38 34q6-12 18-15"} fill="none" stroke="#fff" strokeWidth="5" strokeLinecap="round" opacity="0.9" />
+        {beast && (
+          <g className="fill-ghost-shade">
+            {/* pecho */}
+            <path d="M34 80q13-6 25 0v6q-12 7-25 0z" opacity="0.55" />
+            <path d="M61 80q12-6 25 0v6q-13 7-25 0z" opacity="0.55" />
+            {/* six-pack */}
+            {[92, 100, 108].map((y) => (
+              <g key={y} opacity="0.5"><rect x="49" y={y} width="10" height="6.5" rx="3" /><rect x="61" y={y} width="10" height="6.5" rx="3" /></g>
+            ))}
+          </g>
+        )}
+        <path d={beast ? "M18 42q42-13 84 0v-9q-42-13-84 0z" : "M27 41q33-11 66 0v-9q-33-11-66 0z"} fill="#c6f432" />
+        <ellipse cx="38" cy="72" rx="6" ry="3.5" fill="#ff8fa3" opacity={beast ? 0 : 0.55} /><ellipse cx="82" cy="72" rx="6" ry="3.5" fill="#ff8fa3" opacity={beast ? 0 : 0.55} />
+        {/* ojos */}
+        {mood === "fiesta" && !fierce ? (
+          <g fill="none" stroke="#111" strokeWidth="3.4" strokeLinecap="round"><path d="M40 60q7-9 14 0" /><path d="M66 60q7-9 14 0" /></g>
+        ) : (
+          <g>
+            <ellipse cx="47" cy="61" rx="6.5" ry={fierce ? 6.5 : 8.5} fill="#111" />
+            <ellipse cx="73" cy="61" rx="6.5" ry={fierce ? 6.5 : 8.5} fill="#111" />
+            <circle cx="49.5" cy="58" r="2.6" fill={eyeGlow ?? "#fff"} className={eyeGlow ? "wso-aura" : undefined} />
+            <circle cx="75.5" cy="58" r="2.6" fill={eyeGlow ?? "#fff"} className={eyeGlow ? "wso-aura" : undefined} />
+          </g>
+        )}
+        {fierce && <g fill="none" stroke="#111" strokeWidth="3.6" strokeLinecap="round"><path d="M37 47l16 6" /><path d="M83 47l-16 6" /></g>}
+        {fierce ? <path d="M50 73q10 9 20 0" fill="#111" /> : <path d="M52 73q8 8 16 0" fill="none" stroke="#111" strokeWidth="3.4" strokeLinecap="round" />}
+        {fierce && <path d="M53 74h14" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" />}
+      </g>
+      <FormFront form={form} />
     </svg>
   );
 }
