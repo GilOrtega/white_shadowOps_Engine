@@ -78,7 +78,7 @@ export function facets(s: HqState, today: string, hour: number, ctx: FacetContex
     sub: danger.level === "cumplido" ? "Día asegurado" : `${danger.title} · ${L.challengeInfo(s.profile, today).daysLeft} días al veredicto`,
     headline: danger.level === "cumplido" ? "Cuerpo asegurado hoy." : danger.detail,
     status: danger.level,
-    next: !firstLeft ? null : firstLeft.id === "train" ? { label: "Ya entrené", action: { kind: "train" } } : { label: "Registrar comida", action: { kind: "link", href: "#comidas" } },
+    next: !firstLeft ? null : firstLeft.id === "train" ? { label: "Ya entrené", action: { kind: "train" } } : { label: "Registrar comida", action: { kind: "link", href: "/#comidas" } },
   };
 
   // Mente: cómo vienes hoy + la captura de la Bitácora.
@@ -127,7 +127,7 @@ export function facets(s: HqState, today: string, hour: number, ctx: FacetContex
   const mGoal = s.money.monthlyGoal;
   const pace = Number(today.slice(8, 10)) / daysInMonth(today);
   const dinero: Facet = mGoal === null
-    ? { id: "dinero", name: "Dinero", agent: "Estratega", pct: 0, metric: income ? `${money(income)} este mes` : "Sin meta", sub: "Ponle meta al mes para medir el ritmo", headline: "Ponle meta de ingresos al mes.", status: "sin-datos", next: { label: "Poner meta", action: { kind: "link", href: "#dinero" } } }
+    ? { id: "dinero", name: "Dinero", agent: "Estratega", pct: 0, metric: income ? `${money(income)} este mes` : "Sin meta", sub: "Ponle meta al mes para medir el ritmo", headline: "Ponle meta de ingresos al mes.", status: "sin-datos", next: { label: "Poner meta", action: { kind: "link", href: "/yo#dinero" } } }
     : {
         id: "dinero", name: "Dinero", agent: "Estratega",
         pct: (income / mGoal) * 100,
@@ -135,7 +135,7 @@ export function facets(s: HqState, today: string, hour: number, ctx: FacetContex
         sub: income >= mGoal ? "Meta del mes cumplida" : income / mGoal >= pace ? "Vas arriba del ritmo del mes" : `Para ir al ritmo: ${money(mGoal * pace - income)} más`,
         headline: income / mGoal >= pace ? "Dinero va arriba del ritmo del mes." : `Para ir al ritmo del mes te faltan ${money(mGoal * pace - income)}.`,
         status: income >= mGoal ? "cumplido" : income / mGoal >= pace * 0.8 ? "ok" : pace > 0.5 ? "peligro" : "atento",
-        next: { label: "Registrar ingreso", action: { kind: "link", href: "#dinero" } },
+        next: { label: "Registrar ingreso", action: { kind: "link", href: "/yo#dinero" } },
       };
 
   return [cuerpo, mente, trabajo, marca, dinero];

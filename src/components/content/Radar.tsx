@@ -6,8 +6,9 @@ import * as C from "@/hq/content";
 import { weekStart } from "@/hq/facets";
 import type { RadarIdea, RadarSource } from "@/hq/radar";
 import type { HqState } from "@/hq/schemas";
-import { actions } from "@/hq/store";
-import { btn, Icon, input } from "../hq/ui";
+import { actions, useHq } from "@/hq/store";
+import { useToday } from "@/hq/useToday";
+import { btn, Icon, input, Loading } from "../hq/ui";
 
 const FORMAT: Record<RadarIdea["format"], { label: string; cls: string }> = {
   guion: { label: "Guion", cls: "bg-amber/15 text-amber" },
@@ -24,6 +25,13 @@ const domain = (url: string) => {
   }
 };
 const ago = (iso: string) => new Intl.DateTimeFormat("es-MX", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }).format(new Date(iso));
+
+export function RadarPage() {
+  const hq = useHq();
+  const today = useToday();
+  if (!hq || !today) return <Loading />;
+  return <RadarPanel hq={hq} today={today} />;
+}
 
 export function RadarPanel({ hq, today }: { hq: HqState; today: string }) {
   const r = hq.radar;

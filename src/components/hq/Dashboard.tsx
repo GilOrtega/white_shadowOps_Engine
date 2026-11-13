@@ -4,21 +4,20 @@ import Link from "next/link";
 import { useState } from "react";
 import type { CoachAdvice, CoachRequest } from "@/hq/agents/coach";
 import { callAgent } from "@/hq/client";
-import * as F from "@/hq/flames";
 import * as L from "@/hq/logic";
 import type { HqState } from "@/hq/schemas";
 import { actions, parseNumber, useHq } from "@/hq/store";
 import { useHour, useToday } from "@/hq/useToday";
 import { CommandCenter, WorkMoney } from "./CommandCenter";
-import { Fold, FoldIndex } from "./Fold";
-import { DayChecklist, GymBanner, SombraEvolution, TodayHeader } from "./Flames";
+import { Fold } from "./Fold";
 import { Hero } from "./Hero";
+import { DayChecklist, GymBanner, SombraEvolution, TodayHeader } from "./Flames";
 import { NutriTip } from "../nutri/Nutri";
 import { HabitsToday } from "./Proactive";
 import { Mascot } from "./Mascot";
 import { TodayCapture } from "./Journal";
 import { MealLogger } from "./MealLogger";
-import { Avatar, Bar, btn, Card, H2, Icon, input, Loading, Pill } from "./ui";
+import { Avatar, Bar, btn, Card, H2, Icon, input, Loading, PageTitle, Pill } from "./ui";
 import { DailyFuel, RapoMeter } from "./Widgets";
 import { Workout } from "./Workout";
 
@@ -34,42 +33,17 @@ const longDate = (date: string) => {
   const s = new Intl.DateTimeFormat("es-MX", { weekday: "long", day: "numeric", month: "long" }).format(L.parseDate(date));
   return s.charAt(0).toUpperCase() + s.slice(1);
 };
-const shortDate = (date: string) => new Intl.DateTimeFormat("es-MX", { day: "numeric", month: "short" }).format(L.parseDate(date));
 
 export function DashboardView({ hq, today, hour = 12 }: { hq: HqState; today: string; hour?: number }) {
-  const info = L.challengeInfo(hq.profile, today);
-  const series = L.weightSeries(hq);
-  const rate = L.weeklyRate(series);
-  const trend = series.at(-1)?.trend ?? hq.profile.startWeightKg;
-  const prog = L.progress(hq);
-  const change = trend - hq.profile.startWeightKg;
   const day = L.dayOf(hq, today);
   const kcal = L.kcalOf(day);
-
-  const check = F.dayChecklist(hq, today);
-  const ev = F.evolution(hq, today);
   const training = L.trainingFor(hq.plan, today, hq.profile.startDate);
   const gymDay = training.kind === "gym";
-  const dateLabel = longDate(today);
   return (
     <div className="flex flex-col gap-5">
-      <TodayHeader hq={hq} today={today} dateLabel={dateLabel} />
+      <TodayHeader hq={hq} today={today} dateLabel={longDate(today)} />
 
       <DayChecklist hq={hq} today={today} />
-
-      <CommandCenter hq={hq} today={today} hour={hour} dateLabel={dateLabel} part="propone" />
-
-      <FoldIndex items={[
-        { id: "gym", label: "Gym", dot: "bg-lime" },
-        { id: "comidas-fold", label: "Comidas", dot: "bg-accent" },
-        { id: "evolucion", label: "Sombra", dot: "bg-amber" },
-        { id: "cuerpo", label: "Cuerpo", dot: "bg-accent" },
-        { id: "facetas", label: "Facetas", dot: "bg-iris" },
-        { id: "historia", label: "Historia", dot: "bg-sky" },
-        { id: "habitos", label: "Hábitos", dot: "bg-mint" },
-        { id: "vida", label: "Trabajo y dinero", dot: "bg-sky" },
-        { id: "equipo", label: "Equipo", dot: "bg-amber" },
-      ]} />
 
       <Fold id="gym" title={gymDay ? "Gym de hoy" : "Movimiento de hoy"} tone="text-lime" defaultOpen={gymDay}
         summary={`${training.title}${day.trainingDone ? " · hecho ✓" : ""}`}>
@@ -77,7 +51,7 @@ export function DashboardView({ hq, today, hour = 12 }: { hq: HqState; today: st
         <CoachCard hq={hq} today={today} />
       </Fold>
 
-      <Fold id="comidas-fold" title="Comidas" tone="text-accent"
+      <Fold id="comidas-fold" title="Comidas de hoy" tone="text-accent"
         summary={`${kcal.toLocaleString("es-MX")} de ${hq.profile.calorieTarget.toLocaleString("es-MX")} kcal · ${day.meals.length} ${day.meals.length === 1 ? "comida" : "comidas"}`}>
         <NutriTip hq={hq} today={today} hour={hour} />
         <div className="grid items-start gap-4 lg:grid-cols-2">
@@ -86,68 +60,75 @@ export function DashboardView({ hq, today, hour = 12 }: { hq: HqState; today: st
         </div>
       </Fold>
 
-      <Fold id="evolucion" title="Tu Sombra y tus flamas" tone="text-amber"
-        summary={`${ev.form.name} · ${ev.streak === 1 ? "1 semana perfecta seguida" : `${ev.streak} semanas perfectas seguidas`}`}>
-        <SombraEvolution hq={hq} today={today} />
-      </Fold>
-
-      <Fold id="cuerpo" title="Cuerpo: el reto" tone="text-accent"
-        summary={`Día ${info.dayNumber} de ${hq.profile.challengeDays} · ${L.fmtKg(trend)} · ${prog.completeDays} días cumplidos`}>
-        <Hero hq={hq} today={today} />
-        <div className="grid items-stretch gap-4 lg:grid-cols-2">
-          <RapoMeter hq={hq} today={today} hour={hour} />
-          <Questions hq={hq} today={today} />
-        </div>
-        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
-          <Mascot hq={hq} today={today} hour={hour} />
-          <TodayCapture today={today} />
-        </div>
-        <p className="glass rounded-2xl px-4 py-3 text-[15px] leading-snug"><span className="font-semibold text-iris">Coach.</span> {L.coachNote(hq, today)}</p>
-        <section aria-label="Resumen" className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
-          <Kpi label="Peso (tendencia 7 días)" value={L.fmtKg(trend)} pct={null}
-            sub={`${rate === null ? "Aún sin ritmo semanal" : `${rate > 0 ? "+" : ""}${rate.toFixed(1)} kg por semana`} · ${hq.profile.goalWeightKg === null ? "sin meta" : `meta ${L.fmtKg(hq.profile.goalWeightKg)}`}`} />
-          <Kpi label="Desde el día 1" value={`${change > 0 ? "+" : ""}${change.toFixed(1)} kg`} pct={null}
-            sub={change < -0.05 ? "Eso ya no regresa. Sigue." : "La báscula se mueve cuando cumples días."} />
-          <Kpi label="Días cumplidos" value={`${prog.completeDays} de ${info.dayNumber}`} pct={(prog.completeDays / info.dayNumber) * 100} tone="sky"
-            sub={`Reto al ${info.pct}% · termina el ${shortDate(info.endDate)}`} />
-          <Kpi label="Lista de hoy" value={`${check.done} / ${check.total}`} pct={check.pct * 100} tone={check.pct >= F.FLAME_AT ? "amber" : "accent"}
-            sub={check.pct >= F.FLAME_AT ? "Flama asegurada" : `${check.missing === 1 ? "Falta 1" : `Faltan ${check.missing}`} para la flama`} />
-        </section>
-      </Fold>
-
-      <Fold id="facetas" title="Centro de mando: tus 5 facetas" tone="text-iris" summary="Cuerpo, mente, trabajo, marca y dinero en un vistazo">
-        <CommandCenter hq={hq} today={today} hour={hour} dateLabel={dateLabel} part="mando" />
-      </Fold>
-
-      <Fold id="historia" title="Tu historia" tone="text-sky" summary="Últimas 2 semanas, constancia por faceta y fotos">
-        <CommandCenter hq={hq} today={today} hour={hour} dateLabel={dateLabel} part="historia" />
-      </Fold>
-
-      <Fold id="habitos" title="Hábitos y recordatorios" tone="text-mint" summary={`${hq.habits.length} ${hq.habits.length === 1 ? "hábito" : "hábitos"} · horarios y avisos`}>
-        <HabitsToday hq={hq} today={today} hhmm={`${String(hour).padStart(2, "0")}:00`} />
-      </Fold>
-
-      <Fold id="vida" title="Trabajo, dinero y marca" tone="text-sky" summary="Lo que paga las cuentas y lo que te hace crecer">
-        <WorkMoney hq={hq} today={today} />
-      </Fold>
-
-      <Fold id="equipo" title="Tu equipo de agentes" tone="text-amber" summary="Quién hace qué y qué te toca a ti">
-        <Team hq={hq} today={today} />
-      </Fold>
     </div>
   );
 }
 
-function Kpi({ label, value, sub, pct, tone }: { label: string; value: string; sub: string; pct: number | null; tone?: "accent" | "lime" | "sky" | "amber" }) {
+/** Cuerpo → Progreso: la evolución de Sombra, la apuesta y lo que se registra del cuerpo (arriba de la gráfica de peso). */
+export function BodyTop({ hq, today, hour }: { hq: HqState; today: string; hour: number }) {
   return (
-    <section className="glass flex flex-col gap-1.5 rounded-[20px] p-4">
-      <span className="text-xs text-mute">{label}</span>
-      <span className="tnum font-display text-[26px] font-bold leading-tight tracking-[-0.03em]">{value}</span>
-      {pct !== null && <Bar pct={pct} tone={tone} label={label} />}
-      <span className="text-xs text-mute">{sub}</span>
-    </section>
+    <div className="flex flex-col gap-4">
+      <Hero hq={hq} today={today} />
+      <SombraEvolution hq={hq} today={today} />
+      <div className="grid items-stretch gap-4 lg:grid-cols-2">
+        <RapoMeter hq={hq} today={today} hour={hour} />
+        <Questions hq={hq} today={today} />
+      </div>
+      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+        <Mascot hq={hq} today={today} hour={hour} />
+        <TodayCapture today={today} />
+      </div>
+      <p className="glass rounded-2xl px-4 py-3 text-[15px] leading-snug"><span className="font-semibold text-iris">Coach.</span> {L.coachNote(hq, today)}</p>
+    </div>
   );
 }
+
+/** Agentes → Ideas y equipo. */
+export function IdeasTeam() {
+  const hq = useHq();
+  const today = useToday();
+  const hour = useHour();
+  if (!hq || !today || hour === null) return <Loading />;
+  return (
+    <div className="flex flex-col gap-5">
+      <PageTitle title="Ideas y equipo" sub="Lo que propone tu Sombra y quién hace qué" />
+      <CommandCenter hq={hq} today={today} hour={hour} dateLabel={longDate(today)} part="propone" />
+      <Team hq={hq} today={today} />
+    </div>
+  );
+}
+
+/** Yo → Mi vida: trabajo, dinero, tus 5 facetas y tu historia. */
+export function LifeView() {
+  const hq = useHq();
+  const today = useToday();
+  const hour = useHour();
+  if (!hq || !today || hour === null) return <Loading />;
+  const dateLabel = longDate(today);
+  return (
+    <div className="flex flex-col gap-5">
+      <PageTitle title="Mi vida" sub="Trabajo, dinero y el resto de tus facetas" />
+      <WorkMoney hq={hq} today={today} />
+      <CommandCenter hq={hq} today={today} hour={hour} dateLabel={dateLabel} part="mando" />
+      <CommandCenter hq={hq} today={today} hour={hour} dateLabel={dateLabel} part="historia" />
+    </div>
+  );
+}
+
+/** Cuerpo → Hábitos. */
+export function HabitsPage() {
+  const hq = useHq();
+  const today = useToday();
+  const hour = useHour();
+  if (!hq || !today || hour === null) return <Loading />;
+  return (
+    <div className="flex flex-col gap-5">
+      <PageTitle title="Hábitos" sub="Lo que repites todos los días, con su recordatorio" />
+      <HabitsToday hq={hq} today={today} hhmm={`${String(hour).padStart(2, "0")}:00`} />
+    </div>
+  );
+}
+
 
 
 function Questions({ hq, today }: { hq: HqState; today: string }) {
@@ -257,7 +238,7 @@ function CoachCard({ hq, today }: { hq: HqState; today: string }) {
   );
 }
 
-function Team({ hq, today }: { hq: HqState; today: string }) {
+export function Team({ hq, today }: { hq: HqState; today: string }) {
   const cards = L.agentCards(hq, today);
   return (
     <section aria-labelledby="team-h" className="flex flex-col gap-3">
