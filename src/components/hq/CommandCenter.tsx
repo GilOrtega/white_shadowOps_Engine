@@ -12,8 +12,7 @@ import * as L from "@/hq/logic";
 import type { HqState } from "@/hq/schemas";
 import { actions, parseNumber } from "@/hq/store";
 import { btn, Card, H2, Icon, input } from "./ui";
-import { Fold } from "./Fold";
-import { HabitsToday, Proposals } from "./Proactive";
+import { Proposals } from "./Proactive";
 import { BeforeNow, ConsistencyMap, FacetArt, MiniBars, PaceLine, PhotoStrip, ScoreTrend } from "./Visuals";
 import { ActivityRing, StreakAvatar } from "./Widgets";
 
@@ -40,26 +39,29 @@ export function approvedThisWeek(jobs: StreamJob[] | null, today: string) {
   return (jobs ?? []).filter((j) => j.createdAt.slice(0, 10) >= start).reduce((n, j) => n + j.clips.filter((c) => c.decision === "aprobado").length, 0);
 }
 
-export function CommandCenter({ hq, today, hour, dateLabel }: { hq: HqState; today: string; hour: number; dateLabel: string }) {
+export type MandoPart = "all" | "mando" | "propone" | "historia";
+
+export function CommandCenter({ hq, today, hour, dateLabel, part = "all" }: { hq: HqState; today: string; hour: number; dateLabel: string; part?: MandoPart }) {
   const captures = useCaptures();
   const jobs = useJobs();
   const p = captures ? pulse(captures, today) : null;
-  return <CommandCenterView hq={hq} today={today} hour={hour} dateLabel={dateLabel} captures={captures} ctx={{ journal: p, approvedClipsThisWeek: approvedThisWeek(jobs, today) }} />;
+  return <CommandCenterView hq={hq} today={today} hour={hour} dateLabel={dateLabel} captures={captures} part={part} ctx={{ journal: p, approvedClipsThisWeek: approvedThisWeek(jobs, today) }} />;
 }
 
-export function CommandCenterView({ hq, today, hour, dateLabel, ctx, captures = null }: { hq: HqState; today: string; hour: number; dateLabel: string; ctx: F.FacetContext; captures?: Capture[] | null }) {
+export function CommandCenterView({ hq, today, hour, dateLabel, ctx, captures = null, part = "all" }: { hq: HqState; today: string; hour: number; dateLabel: string; ctx: F.FacetContext; captures?: Capture[] | null; part?: MandoPart }) {
+  const show = (p: MandoPart) => part === "all" || part === p;
   const list = F.facets(hq, today, hour, ctx);
   const hist = F.history(hq, today, 14, new Set((captures ?? []).map((c) => c.date)));
   const week = hist.slice(-7);
   const pace = hq.money.monthlyGoal ? F.monthPace(hq, today) : null;
   const props = proposals(hq, today, hour, ctx);
-  const hhmm = `${String(hour).padStart(2, "0")}:00`;
   const score = F.lifeScore(list);
   const urgent = F.mostUrgent(list);
   const headline = score >= 100 ? "Día redondo. Todas las facetas en verde." : urgent ? urgent.headline : "Vas bien. Sostén el ritmo.";
 
   return (
     <div className="flex flex-col gap-4">
+      {show("mando") && <>
       <section aria-labelledby="mando-h" className="glass relative grid gap-6 overflow-hidden rounded-[26px] p-5 md:grid-cols-[auto_minmax(0,1fr)] md:items-center md:p-7">
         <LifeRings list={list} score={score} />
         <div className="flex min-w-0 flex-col gap-3">
@@ -84,10 +86,6 @@ export function CommandCenterView({ hq, today, hour, dateLabel, ctx, captures = 
         </div>
       </section>
 
-      <Proposals hq={hq} today={today} list={props} />
-
-      <Fold id="facetas" title="Tus 5 facetas a detalle" tone="text-iris"
-        summary={list.map((f) => `${f.name} ${f.status === "sin-datos" ? "—" : `${Math.round(Math.min(f.pct, 999))}%`}`).join(" · ")}>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
         {list.map((f, i) => (
           <div key={f.id} className={`flex lg:col-span-2 ${i >= 3 ? "lg:col-span-3" : ""}`}>
@@ -97,12 +95,11 @@ export function CommandCenterView({ hq, today, hour, dateLabel, ctx, captures = 
           </div>
         ))}
       </div>
+      </>}
 
-      </Fold>
+      {show("propone") && <Proposals hq={hq} today={today} list={props} />}
 
-      <HabitsToday hq={hq} today={today} hhmm={hhmm} />
-
-      <Fold id="historia" title="Tu historia" tone="text-sky" summary="Últimas 2 semanas, constancia por faceta y fotos">
+      {show("historia") && <>
 
       <section aria-labelledby="semana-h" className="glass grid gap-5 rounded-[26px] p-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
         <div className="flex min-w-0 flex-col gap-2">
@@ -128,7 +125,7 @@ export function CommandCenterView({ hq, today, hour, dateLabel, ctx, captures = 
           <BeforeNow captures={captures ?? []} />
         </div>
       </section>
-      </Fold>
+      </>}
     </div>
   );
 }

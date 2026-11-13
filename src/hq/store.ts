@@ -175,6 +175,28 @@ export const actions = {
     const s = getSnapshot();
     commit({ ...s, habits: s.habits.filter((h) => h.id !== id) });
   },
+  addTodo(date: string, title: string) {
+    const t = title.trim().slice(0, 80);
+    if (!t) return;
+    const todos = dayOf(getSnapshot(), date).todos ?? [];
+    patchDay(date, { todos: [...todos, { id: Math.random().toString(36).slice(2, 10), title: t, done: false }].slice(0, 30) });
+  },
+  toggleTodo(date: string, id: string) {
+    const todos = dayOf(getSnapshot(), date).todos ?? [];
+    patchDay(date, { todos: todos.map((x) => (x.id === id ? { ...x, done: !x.done } : x)) });
+  },
+  removeTodo(date: string, id: string) {
+    patchDay(date, { todos: (dayOf(getSnapshot(), date).todos ?? []).filter((x) => x.id !== id) });
+  },
+  /** Marca/desmarca cualquier renglón de la lista del día (ids de flames.dayChecklist). */
+  toggleChecklist(date: string, itemId: string) {
+    const [kind, id] = [itemId.slice(0, 1), itemId.slice(2)];
+    const d = dayOf(getSnapshot(), date);
+    if (kind === "m" && id === "train") patchDay(date, { trainingDone: !d.trainingDone });
+    else if (kind === "m" && id === "clip") patchDay(date, { clipDone: !d.clipDone });
+    else if (kind === "h") actions.toggleHabit(date, id);
+    else if (kind === "t") actions.toggleTodo(date, id);
+  },
   toggleHabit(date: string, id: string) {
     const done = dayOf(getSnapshot(), date).habitsDone;
     patchDay(date, { habitsDone: done.includes(id) ? done.filter((x) => x !== id) : [...done, id] });

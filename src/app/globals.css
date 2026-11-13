@@ -220,6 +220,18 @@ a:active {
 }
 
 .wso-float { animation: wso-float 3.2s ease-in-out infinite; }
+@keyframes wso-flicker {
+  0%, 100% { transform: scale(1, 1) skewX(0deg); }
+  30% { transform: scale(0.94, 1.08) skewX(-3deg); }
+  60% { transform: scale(1.05, 0.94) skewX(3deg); }
+}
+.wso-flicker { animation: wso-flicker 0.9s ease-in-out infinite; transform-box: fill-box; }
+@keyframes wso-zap {
+  0%, 62%, 100% { opacity: 0; }
+  64%, 70% { opacity: 1; }
+  67% { opacity: 0.35; }
+}
+.wso-zap { animation: wso-zap 2.4s linear infinite; }
 .wso-bounce { animation: wso-bounce 0.9s ease-in-out infinite; }
 .wso-shadow { animation: wso-shadow 3.2s ease-in-out infinite; transform-origin: center; }
 .wso-confetti { animation: wso-pop 1.1s ease-out forwards; }
@@ -233,7 +245,8 @@ a:active {
 
 @media (prefers-reduced-motion: reduce) {
   .wso-confetti { display: none; }
-  .wso-pulse, .wso-bounce, .wso-float, .wso-shadow, .wso-in, .wso-bubble, .wso-sheet, .wso-fade, .wso-aura { animation: none; }
+  .wso-pulse, .wso-bounce, .wso-float, .wso-shadow, .wso-in, .wso-bubble, .wso-sheet, .wso-fade, .wso-aura, .wso-flicker { animation: none; }
+  .wso-zap { animation: none; opacity: 1; }
   .wso-ring, button, a, .glass::before { transition: none; }
 }
 @media (prefers-reduced-transparency: reduce) {
