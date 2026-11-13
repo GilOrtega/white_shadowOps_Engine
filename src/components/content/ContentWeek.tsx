@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { callAgent } from "@/hq/client";
 import * as C from "@/hq/content";
 import { weekStart } from "@/hq/facets";
@@ -11,14 +11,44 @@ import type { ContentFormat, ContentItem, HqState } from "@/hq/schemas";
 import { actions, useHq } from "@/hq/store";
 import { useToday } from "@/hq/useToday";
 import { Fold } from "../hq/Fold";
+import { RadarPanel } from "./Radar";
 import { GhostGlyph } from "../hq/GhostDock";
 import { btn, Icon, input, Loading, PageTitle } from "../hq/ui";
+
+const subscribeHash = (cb: () => void) => {
+  window.addEventListener("hashchange", cb);
+  return () => window.removeEventListener("hashchange", cb);
+};
 
 export function ContentWeekPage() {
   const hq = useHq();
   const today = useToday();
+  const hash = useSyncExternalStore(subscribeHash, () => window.location.hash, () => "");
+  const tab: "semana" | "radar" = hash === "#radar" ? "radar" : "semana";
   if (!hq || !today) return <Loading />;
-  return <ContentWeekView hq={hq} today={today} />;
+  const go = (t: "semana" | "radar") => {
+    try {
+      window.history.replaceState(null, "", t === "radar" ? "#radar" : window.location.pathname);
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    } catch {
+      /* sin historial */
+    }
+  };
+  return (
+    <div className="flex flex-col gap-5">
+      <div role="tablist" aria-label="Contenido" className="glass grid grid-cols-2 gap-1 rounded-2xl p-1">
+        {([["semana", "Mi semana"], ["radar", "Radar del nicho"]] as const).map(([id, label]) => (
+          <button key={id} type="button" role="tab" id={`tab-${id}`} aria-selected={tab === id} aria-controls={`panel-${id}`} onClick={() => go(id)}
+            className={`min-h-11 rounded-xl text-[14px] font-semibold transition-colors ${tab === id ? "bg-white/[0.12] text-fg shadow-[inset_0_1px_0_rgb(255_255_255/0.08)]" : "text-mute hover:text-fg"}`}>
+            {label}{id === "radar" && hq.radar.ideas.length > 0 && <span className="ml-1.5 rounded-full bg-iris/20 px-1.5 text-[11px] text-iris">{hq.radar.ideas.length}</span>}
+          </button>
+        ))}
+      </div>
+      <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
+        {tab === "radar" ? <RadarPanel hq={hq} today={today} /> : <ContentWeekView hq={hq} today={today} />}
+      </div>
+    </div>
+  );
 }
 
 const TONE: Record<ContentFormat, { pill: string; border: string; text: string }> = {
