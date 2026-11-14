@@ -187,6 +187,11 @@ export const actions = {
     const s = getSnapshot();
     commit({ ...s, radar: { ...s.radar, niche: niche.slice(0, 140), ideas: ideas.slice(0, 15), ranAt } });
   },
+  addRadarIdea(idea: RadarIdea) {
+    const s = getSnapshot();
+    if (s.radar.ideas.some((i) => i.title === idea.title)) return;
+    commit({ ...s, radar: { ...s.radar, ideas: [idea, ...s.radar.ideas].slice(0, 15) } });
+  },
   setRadarNiche(niche: string) {
     const s = getSnapshot();
     commit({ ...s, radar: { ...s.radar, niche: niche.slice(0, 140) } });
