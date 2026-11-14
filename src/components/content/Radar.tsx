@@ -5,6 +5,7 @@ import { callAgent } from "@/hq/client";
 import * as C from "@/hq/content";
 import { weekStart } from "@/hq/facets";
 import type { RadarIdea, RadarSource } from "@/hq/radar";
+import * as T from "@/hq/trends";
 import type { HqState } from "@/hq/schemas";
 import { actions, useHq } from "@/hq/store";
 import { useToday } from "@/hq/useToday";
@@ -39,6 +40,12 @@ export function RadarPanel({ hq, today }: { hq: HqState; today: string }) {
   const [busy, setBusy] = useState(false);
   const [step, setStep] = useState(0);
   const [msg, setMsg] = useState<string | null>(null);
+  const [picked, setPicked] = useState<T.TopicId[]>([]);
+  const toggleTopic = (id: T.TopicId) => {
+    const next = picked.includes(id) ? picked.filter((x) => x !== id) : [...picked, id];
+    setPicked(next);
+    if (next.length) setNiche(T.nicheFrom(next));
+  };
 
   useEffect(() => {
     if (!busy) return;
@@ -70,6 +77,17 @@ export function RadarPanel({ hq, today }: { hq: HqState; today: string }) {
           <h2 id="radar-h" className="font-display text-[20px] font-bold tracking-[-0.02em]">Radar del nicho</h2>
           <p className="text-[14px] text-mute">Busca en la web qué está funcionando en tu nicho y te deja las mejores ideas, cada una con su fuente y cómo la harías tú.</p>
         </div>
+        <div role="group" aria-label="Temas" className="flex flex-wrap gap-2">
+          {T.TOPICS.map((t) => {
+            const on = picked.includes(t.id);
+            return (
+              <button key={t.id} type="button" aria-pressed={on} onClick={() => toggleTopic(t.id)}
+                className={`flex min-h-10 items-center gap-1.5 rounded-full px-3.5 text-[14px] font-semibold transition-colors ${on ? "bg-iris text-ink" : "bg-white/[0.06] text-fg/85 hover:bg-white/[0.1]"}`}>
+                <span aria-hidden="true">{t.emoji}</span>{t.label}
+              </button>
+            );
+          })}
+        </div>
         <form className="flex flex-col gap-2 sm:flex-row" onSubmit={(e) => { e.preventDefault(); void scan(); }}>
           <label className="sr-only" htmlFor="radar-niche">Tu nicho</label>
           <input id="radar-niche" className={`${input} min-h-11 flex-1`} value={niche} maxLength={140} onChange={(e) => setNiche(e.target.value)} placeholder="Ej. gym, programación con IA y disciplina" />
@@ -84,6 +102,8 @@ export function RadarPanel({ hq, today }: { hq: HqState; today: string }) {
         {r.ranAt && !busy && <p className="text-[12px] text-mute">Última búsqueda: {ago(r.ranAt)} · “{r.niche}”</p>}
       </section>
 
+      <YouTubeRising hq={hq} />
+
       {r.ideas.length === 0 && !busy ? (
         <section className="glass flex flex-col items-center gap-2 rounded-[26px] p-8 text-center">
           <Icon name="search" size={32} />
@@ -96,6 +116,103 @@ export function RadarPanel({ hq, today }: { hq: HqState; today: string }) {
         </ol>
       )}
     </div>
+  );
+}
+
+/** Hora de la carga (se usa en un manejador, no al dibujar). */
+const stamp = () => Date.now();
+
+type YtState = { topic: T.TopicId; loading: boolean; videos: T.TrendVideo[] | null; error: string | null; at: number };
+
+/** Videos que van en ascenso en YouTube México, por tema, ordenados por vistas por hora. */
+function YouTubeRising({ hq }: { hq: HqState }) {
+  const [st, setSt] = useState<YtState>({ topic: "gym", loading: false, videos: null, error: null, at: 0 });
+  const [onlyShorts, setOnlyShorts] = useState(false);
+  async function load(topic: T.TopicId) {
+    setSt({ topic, loading: true, videos: null, error: null, at: 0 });
+    try {
+      const res = await fetch(`/api/trends/youtube?topic=${topic}`, { headers: { "x-wso-key": hq.accessKey }, cache: "no-store" });
+      const json = (await res.json().catch(() => null)) as { videos?: T.TrendVideo[]; message?: string } | null;
+      if (!res.ok) throw new Error(json?.message ?? "No se pudo cargar YouTube.");
+      setSt({ topic, loading: false, videos: json?.videos ?? [], error: null, at: stamp() });
+    } catch (e) {
+      setSt({ topic, loading: false, videos: null, error: e instanceof Error ? e.message : "No se pudo cargar YouTube.", at: 0 });
+    }
+  }
+  const list = (st.videos ?? []).filter((v) => !onlyShorts || v.isShort);
+  const now = st.at;
+  return (
+    <section aria-labelledby="yt-h" className="glass flex flex-col gap-3 rounded-[26px] p-5">
+      <div>
+        <h2 id="yt-h" className="font-display text-[20px] font-bold tracking-[-0.02em]">En ascenso en YouTube</h2>
+        <p className="text-[14px] text-mute">Videos de México de los últimos días que más rápido están juntando vistas. Ordenados por vistas por hora, no por total.</p>
+      </div>
+      <div role="tablist" aria-label="Tema" className="-mx-5 flex gap-1.5 overflow-x-auto px-5 pb-1 [scrollbar-width:none]">
+        {T.TOPICS.map((t) => {
+          const on = st.topic === t.id && (st.videos !== null || st.loading);
+          return (
+            <button key={t.id} type="button" role="tab" aria-selected={on} onClick={() => void load(t.id)}
+              className={`flex min-h-9 shrink-0 items-center gap-1 rounded-full px-3 text-[13px] font-semibold ${on ? "bg-white/[0.16] text-fg" : "bg-white/[0.05] text-mute hover:text-fg"}`}>
+              <span aria-hidden="true">{t.emoji}</span>{t.label}
+            </button>
+          );
+        })}
+      </div>
+      <label className="flex min-h-9 items-center gap-2 self-start text-[13px] text-mute">
+        <input type="checkbox" checked={onlyShorts} onChange={(e) => setOnlyShorts(e.target.checked)} className="h-4 w-4 accent-[var(--accent)]" />Solo Shorts
+      </label>
+      {st.loading && <p role="status" className="text-[14px] text-iris">Buscando lo que va subiendo…</p>}
+      {st.error && <p role="status" className="text-[14px] text-amber">{st.error}</p>}
+      {!st.loading && st.videos === null && !st.error && <p className="text-[14px] text-mute">Elige un tema para ver qué está subiendo.</p>}
+      {st.videos && list.length === 0 && <p className="text-[14px] text-mute">No hay {onlyShorts ? "Shorts" : "videos"} en ascenso en este tema ahorita.</p>}
+      {list.length > 0 && (
+        <ol className="flex flex-col gap-2">
+          {list.map((v, i) => <RisingRow key={v.id} v={v} n={i + 1} now={now} topic={st.topic} />)}
+        </ol>
+      )}
+      <p className="text-[11px] text-mute/70">Datos de YouTube Data API. Se actualizan cada 3 horas.</p>
+    </section>
+  );
+}
+
+function RisingRow({ v, n, now, topic }: { v: T.TrendVideo; n: number; now: number; topic: T.TopicId }) {
+  const [saved, setSaved] = useState(false);
+  const t = T.topicById(topic)!;
+  const use = () => {
+    actions.addRadarIdea({
+      id: Math.random().toString(36).slice(2, 10),
+      title: `Mi versión de: ${v.title}`.slice(0, 100),
+      why: `Va en ascenso en YouTube México: ${T.fmtCount(v.perHour)} vistas por hora (${T.fmtCount(v.views)} en total, ${T.ago(v.publishedAt, now)}).`.slice(0, 260),
+      how: "Toma el mismo ángulo y cuéntalo con tu reto de 60 días, tu código o tu día real. No copies: responde, opina o hazlo en tu contexto.",
+      hook: "",
+      format: v.isShort ? "guion" : "carrusel",
+      pillar: t.label,
+      strength: "alta",
+      sources: [{ title: v.title.slice(0, 200), url: v.url, age: T.ago(v.publishedAt, now) }],
+    });
+    setSaved(true);
+  };
+  return (
+    <li className="flex gap-3 rounded-2xl bg-white/[0.03] p-2.5">
+      <a href={v.url} target="_blank" rel="noopener noreferrer" className="relative shrink-0 self-start" aria-label={`Ver en YouTube: ${v.title}`}>
+        {/* eslint-disable-next-line @next/next/no-img-element -- miniatura remota de YouTube */}
+        <img src={v.thumb} alt="" width={128} height={72} loading="lazy" className="h-[72px] w-32 rounded-lg bg-black/40 object-cover" />
+        {v.isShort && <span className="absolute bottom-1 left-1 rounded bg-rose px-1.5 text-[10px] font-bold text-ink">SHORT</span>}
+      </a>
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <a href={v.url} target="_blank" rel="noopener noreferrer" className="line-clamp-2 text-[14px] font-semibold leading-snug hover:underline">
+          <span className="mr-1 tnum text-mute">#{n}</span>{v.title}
+        </a>
+        <p className="truncate text-[12px] text-mute">{v.channel} · {T.ago(v.publishedAt, now)}</p>
+        <div className="flex flex-wrap items-center gap-2 text-[12px]">
+          <span className="rounded-full bg-lime/15 px-2 py-0.5 font-semibold text-lime tnum">↑ {T.fmtCount(v.perHour)}/h</span>
+          <span className="tnum text-fg/75">{T.fmtCount(v.views)} vistas</span>
+          <button type="button" onClick={use} disabled={saved} className="ml-auto min-h-8 rounded-full bg-white/[0.08] px-3 font-semibold hover:bg-white/[0.14] disabled:opacity-60">
+            {saved ? "En tus ideas ✓" : "Usar de idea"}
+          </button>
+        </div>
+      </div>
+    </li>
   );
 }
 
