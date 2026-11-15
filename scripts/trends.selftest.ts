@@ -46,6 +46,8 @@ const fake = (async (url: string) => {
   assert.ok(calls[0]!.includes("chart=mostPopular") && calls[0]!.includes("videoCategoryId=28"));
   const bad = (async () => new Response(JSON.stringify({ error: { errors: [{ reason: "quotaExceeded" }] } }), { status: 403 })) as unknown as typeof fetch;
   await assert.rejects(trendingFor("gym", { f: bad, now }), /quotaExceeded/);
+  const badKey = (async () => new Response(JSON.stringify({ error: { message: "API key not valid. Please pass a valid key.", errors: [{ reason: "badRequest" }] } }), { status: 400 })) as unknown as typeof fetch;
+  await assert.rejects(trendingFor("gym", { f: badKey, now }), /badRequest API key not valid/);
   await assert.rejects(trendingFor("nada", { f: fake, now }), /topic/);
   console.log("trends selftest ok");
 })();

@@ -19,7 +19,8 @@ async function get(f: Fetch, path: string, params: Record<string, string>) {
   const json = (await res.json().catch(() => null)) as { items?: unknown[]; error?: { message?: string; errors?: { reason?: string }[] } } | null;
   if (!res.ok) {
     const reason = json?.error?.errors?.[0]?.reason ?? String(res.status);
-    throw new Error(`youtube:${reason}`);
+    const detail = (json?.error?.message ?? "").replace(/key=[^&\s]+/g, "key=***").slice(0, 160);
+    throw new Error(`youtube:${reason} ${detail}`.trim());
   }
   return (json?.items ?? []) as Record<string, unknown>[];
 }
