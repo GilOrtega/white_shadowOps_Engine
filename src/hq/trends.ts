@@ -5,13 +5,16 @@
  */
 export type TopicId = "gym" | "tecnologia" | "ia" | "motivacion" | "videojuegos";
 
-export const TOPICS: { id: TopicId; label: string; emoji: string; niche: string; yt: { category?: string; query?: string } }[] = [
-  { id: "gym", label: "Gym", emoji: "🏋️", niche: "gym y transformación física", yt: { query: "gym rutina transformación física" } },
+export const TOPICS: { id: TopicId; label: string; emoji: string; niche: string; yt: { category?: string; queries?: string[] } }[] = [
+  { id: "gym", label: "Gym", emoji: "🏋️", niche: "gym y transformación física", yt: { queries: ["rutina gym", "transformación física", "motivación gym"] } },
   { id: "tecnologia", label: "Tecnología", emoji: "💻", niche: "tecnología", yt: { category: "28" } },
-  { id: "ia", label: "Programar con IA", emoji: "🤖", niche: "programación con inteligencia artificial", yt: { query: "programar con inteligencia artificial" } },
-  { id: "motivacion", label: "Motivación", emoji: "🔥", niche: "motivación y disciplina", yt: { query: "motivación disciplina hábitos" } },
+  { id: "ia", label: "Programar con IA", emoji: "🤖", niche: "programación con inteligencia artificial", yt: { queries: ["programar con IA", "inteligencia artificial programación", "crear app con IA"] } },
+  { id: "motivacion", label: "Motivación", emoji: "🔥", niche: "motivación y disciplina", yt: { queries: ["motivación disciplina", "hábitos disciplina", "mentalidad"] } },
   { id: "videojuegos", label: "Videojuegos", emoji: "🎮", niche: "videojuegos", yt: { category: "20" } },
 ];
+
+/** Para búsquedas: debajo de esto no se considera "en ascenso" (si quedan suficientes). */
+export const MIN_PER_HOUR = 100;
 export const topicById = (id: string) => TOPICS.find((t) => t.id === id) ?? null;
 
 /** Junta los temas elegidos en una frase para el Radar. */
@@ -47,10 +50,22 @@ export function parseDuration(iso: string) {
 
 type YtVideo = {
   id: string;
-  snippet?: { title?: string; channelTitle?: string; publishedAt?: string; thumbnails?: Record<string, { url?: string }> };
+  snippet?: { title?: string; description?: string; channelTitle?: string; publishedAt?: string; defaultLanguage?: string; defaultAudioLanguage?: string; thumbnails?: Record<string, { url?: string }> };
   statistics?: { viewCount?: string; likeCount?: string; commentCount?: string };
   contentDetails?: { duration?: string };
 };
+
+const PT = /[ãõ]|\b(você|não|muito|então|treino|também|mansão)\b/i;
+const ES = /[ñ¿¡]|\b(el|la|los|las|de|que|cómo|como|para|con|mi|tu|tus|mis|por|más|una|uno|rutina|día|cuerpo|hábitos)\b/i;
+
+/** ¿Está en español? Usa el idioma que declara el video; si no lo declara, lo deduce del título. */
+export function isSpanish(v: YtVideo) {
+  const lang = (v.snippet?.defaultAudioLanguage ?? v.snippet?.defaultLanguage ?? "").toLowerCase();
+  if (lang) return lang.startsWith("es");
+  const text = `${v.snippet?.title ?? ""} ${(v.snippet?.description ?? "").slice(0, 200)}`;
+  if (PT.test(text)) return false;
+  return ES.test(text);
+}
 
 /** Convierte la respuesta de videos.list y ordena por velocidad. */
 export function rankVideos(items: YtVideo[], now: number): TrendVideo[] {

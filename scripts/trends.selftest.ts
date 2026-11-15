@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { parseDuration, rankVideos, nicheFrom, fmtCount, ago, TOPICS } from "../src/hq/trends";
+import { parseDuration, rankVideos, nicheFrom, fmtCount, ago, TOPICS, isSpanish } from "../src/hq/trends";
 import { trendingFor } from "../src/hq/server/youtube";
 
 assert.equal(parseDuration("PT1M5S"), 65);
@@ -11,10 +11,15 @@ assert.equal(nicheFrom(["gym", "tecnologia", "videojuegos"]), "gym y transformac
 assert.equal(fmtCount(1500), "2 mil");
 assert.equal(fmtCount(2_300_000), "2.3 M");
 assert.equal(TOPICS.length, 5);
+// Idioma: declarado gana; si no, por el título
+assert.equal(isSpanish({ id: "x", snippet: { title: "Workout", defaultAudioLanguage: "es-419" } }), true);
+assert.equal(isSpanish({ id: "x", snippet: { title: "CONHECENDO ZIGGY DA MANSÃO" } }), false);
+assert.equal(isSpanish({ id: "x", snippet: { title: "Así fue mi transformación física" } }), true);
+assert.equal(isSpanish({ id: "x", snippet: { title: "Can Yaman's Daily Routine Is INSANE" } }), false);
 
 const now = Date.parse("2026-11-14T12:00:00Z");
-const v = (id: string, hoursAgo: number, views: number, dur = "PT45S") => ({
-  id, snippet: { title: id, channelTitle: "c", publishedAt: new Date(now - hoursAgo * 3_600_000).toISOString(), thumbnails: { medium: { url: "t" } } },
+const v = (id: string, hoursAgo: number, views: number, dur = "PT45S", lang = "es") => ({
+  id, snippet: { title: id, channelTitle: "c", defaultAudioLanguage: lang, publishedAt: new Date(now - hoursAgo * 3_600_000).toISOString(), thumbnails: { medium: { url: "t" } } },
   statistics: { viewCount: String(views) }, contentDetails: { duration: dur },
 });
 const ranked = rankVideos([v("viejo", 720, 1_000_000, "PT10M"), v("nuevo", 10, 200_000), { id: "roto", snippet: { publishedAt: "x" }, statistics: { viewCount: "5" } }], now);
@@ -31,15 +36,16 @@ const calls: string[] = [];
 const fake = (async (url: string) => {
   calls.push(url);
   const u = new URL(url);
-  if (u.pathname.endsWith("/search")) return new Response(JSON.stringify({ items: [{ id: { videoId: "a" } }, { id: { videoId: "b" } }] }));
-  return new Response(JSON.stringify({ items: [v("a", 5, 1000), v("b", 5, 9000)] }));
+  if (u.pathname.endsWith("/search")) return new Response(JSON.stringify({ items: [{ id: { videoId: "a" } }, { id: { videoId: "b" } }, { id: { videoId: "pt" } }] }));
+  return new Response(JSON.stringify({ items: [v("a", 5, 1000), v("b", 5, 9000), v("pt", 5, 99000, "PT45S", "pt-BR")] }));
 }) as unknown as typeof fetch;
 
 (async () => {
   const gym = await trendingFor("gym", { f: fake, now });
-  assert.deepEqual(gym.videos.map((x) => x.id), ["b", "a"]);
-  assert.ok(calls[0]!.includes("/search") && calls[0]!.includes("regionCode=MX") && calls[0]!.includes("publishedAfter="));
-  assert.ok(calls[1]!.includes("id=a%2Cb"));
+  assert.deepEqual(gym.videos.map((x) => x.id), ["b", "a"], "solo español, ordenado por velocidad");
+  assert.equal(calls.filter((c) => c.includes("/search")).length, 3, "tres búsquedas cortas");
+  assert.ok(calls[0]!.includes("regionCode=MX") && calls[0]!.includes("publishedAfter=") && calls[0]!.includes("relevanceLanguage=es"));
+  assert.ok(calls[3]!.includes("id=a%2Cb%2Cpt"), "ids sin repetir");
   calls.length = 0;
   await trendingFor("tecnologia", { f: fake, now });
   assert.equal(calls.length, 1, "categoría = una sola llamada barata");

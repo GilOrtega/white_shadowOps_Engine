@@ -1,4 +1,4 @@
-import { rankVideos, type TrendVideo, topicById } from "../trends";
+import { isSpanish, MIN_PER_HOUR, rankVideos, type TrendVideo, topicById } from "../trends";
 import { kvConfigured, kvGet, kvSet } from "./kv";
 
 /**
@@ -31,25 +31,28 @@ export async function trendingFor(topicId: string, opts: { region?: string; f?: 
   const region = opts.region ?? "MX";
   const f = opts.f ?? fetch;
   const now = opts.now ?? Date.now();
-  const cacheKey = `wso:yt:${region}:${topic.id}`;
+  const cacheKey = `wso:yt:v2:${region}:${topic.id}`;
   if (kvConfigured()) {
     const hit = await kvGet<TrendVideo[]>(cacheKey);
     if (hit) return { videos: hit, cached: true };
   }
-  let ids: string[];
+  const part = "snippet,statistics,contentDetails";
+  let videos: TrendVideo[];
   if (topic.yt.category) {
-    const items = await get(f, "videos", { part: "snippet,statistics,contentDetails", chart: "mostPopular", regionCode: region, videoCategoryId: topic.yt.category, maxResults: "25" });
-    const videos = rankVideos(items as never, now).slice(0, 15);
-    if (kvConfigured()) await kvSet(cacheKey, videos, TTL);
-    return { videos, cached: false };
+    const items = await get(f, "videos", { part, chart: "mostPopular", regionCode: region, videoCategoryId: topic.yt.category, maxResults: "25" });
+    videos = rankVideos(items as never, now).slice(0, 15);
   } else {
+    // Varias búsquedas cortas (más naturales que una sola larga), solo en español y de los últimos 7 días.
     const after = new Date(now - 7 * 24 * 3_600_000).toISOString();
-    const found = await get(f, "search", { part: "id", type: "video", q: topic.yt.query!, order: "viewCount", publishedAfter: after, regionCode: region, relevanceLanguage: "es", maxResults: "25" });
-    ids = found.map((x) => (x.id as { videoId?: string } | undefined)?.videoId).filter((x): x is string => Boolean(x));
+    const found = await Promise.all(topic.yt.queries!.map((q) =>
+      get(f, "search", { part: "id", type: "video", q, order: "viewCount", publishedAfter: after, regionCode: region, relevanceLanguage: "es", maxResults: "20" })));
+    const ids = [...new Set(found.flat().map((x) => (x.id as { videoId?: string } | undefined)?.videoId).filter((x): x is string => Boolean(x)))].slice(0, 50);
+    if (!ids.length) return { videos: [], cached: false };
+    const items = (await get(f, "videos", { part, id: ids.join(",") })) as Parameters<typeof isSpanish>[0][];
+    const ranked = rankVideos(items.filter(isSpanish) as never, now);
+    const rising = ranked.filter((v) => v.perHour >= MIN_PER_HOUR);
+    videos = (rising.length >= 5 ? rising : ranked).slice(0, 15);
   }
-  if (!ids.length) return { videos: [], cached: false };
-  const items = await get(f, "videos", { part: "snippet,statistics,contentDetails", id: ids.join(",") });
-  const videos = rankVideos(items as never, now).slice(0, 15);
   if (kvConfigured()) await kvSet(cacheKey, videos, TTL);
   return { videos, cached: false };
 }
