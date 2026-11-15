@@ -179,7 +179,11 @@ export type HqState = z.infer<typeof HqStateSchema>;
 export const defaultState = (): HqState => HqStateSchema.parse({});
 
 /** Reinicio del reto (15 nov 2026): el arranque original del 23 oct pasa al 15 nov, así el día 60 cae el 13 de enero. */
-export const RESTART = { from: "2026-10-23", to: "2026-11-15" } as const;
+export const RESTART = { from: "2026-10-23", to: "2026-11-15", oldKcal: 2100, kcal: 1750 } as const;
 export function migrateRestart(s: HqState): HqState {
-  return s.profile.startDate === RESTART.from ? { ...s, profile: { ...s.profile, startDate: RESTART.to } } : s;
+  let p = s.profile;
+  if (p.startDate === RESTART.from) p = { ...p, startDate: RESTART.to };
+  // Meta del plan de la nutrióloga (~1,750 kcal): reemplaza la meta vieja de 2,100.
+  if (p.calorieTarget === RESTART.oldKcal) p = { ...p, calorieTarget: RESTART.kcal };
+  return p === s.profile ? s : { ...s, profile: p };
 }

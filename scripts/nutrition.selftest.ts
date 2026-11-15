@@ -15,8 +15,9 @@ const base = (over: Partial<HqState["nutrition"]> = {}): HqState => HqStateSchem
 // Reinicio del reto: el 23 oct pasa al 15 nov y el día 60 cae el 13 de enero
 const s = migrateRestart(base());
 assert.equal(s.profile.startDate, "2026-11-15");
+assert.equal(s.profile.calorieTarget, 1750, "meta del plan de la nutrióloga");
 assert.equal(L.addDays(s.profile.startDate, s.profile.challengeDays - 1), "2027-01-13");
-const otra = HqStateSchema.parse({ v: 1, profile: { startDate: "2026-12-01" } });
+const otra = HqStateSchema.parse({ v: 1, profile: { startDate: "2026-12-01", calorieTarget: 1800 } });
 assert.equal(migrateRestart(otra), otra, "otras fechas se respetan");
 
 // Mifflin-St Jeor sigue disponible como referencia
