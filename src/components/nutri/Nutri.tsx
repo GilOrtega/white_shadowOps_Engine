@@ -24,12 +24,12 @@ export function NutriView({ hq, today, hour }: { hq: HqState; today: string; hou
   const t = N.targetsFor(hq);
   return (
     <div className="flex flex-col gap-5">
-      <PageTitle title="Nutriólogo" sub="Tus calorías, tus macros y qué comer, con comida mexicana de verdad" />
+      <PageTitle title="Nutrición" sub="El plan de tu nutrióloga, día por día" />
       <TodayCard hq={hq} today={today} hour={hour} t={t} />
       <WeekMenu hq={hq} today={today} />
-      <NumbersCard hq={hq} t={t} />
+      <PlanCard />
       <AskCard hq={hq} today={today} t={t} />
-      <p className="text-[12px] leading-snug text-mute">Orientación general con valores aproximados. No sustituye a un nutriólogo con cédula: si tienes una enfermedad, tomas medicamentos o tu relación con la comida se siente difícil, consúltalo con un profesional.</p>
+      <p className="text-[12px] leading-snug text-mute">Plan de la Lic. en Nutrición Humana Ma. Eva Vásquez. Las porciones son las suyas; las calorías y macros son estimaciones de la app para orientarte. Cualquier cambio al plan, consúltalo con ella.</p>
     </div>
   );
 }
@@ -56,7 +56,7 @@ function TodayCard({ hq, today, hour, t }: { hq: HqState; today: string; hour: n
     <section aria-labelledby="nutri-hoy" className="glass flex flex-col gap-4 rounded-[26px] p-5">
       <h2 id="nutri-hoy" className="font-display text-[20px] font-bold tracking-[-0.02em]">Hoy</h2>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Meter label="Calorías" value={L.kcalOf(d)} goal={t.kcal} unit="kcal" tone="bg-lime" />
+        <Meter label="Calorías (aprox.)" value={L.kcalOf(d)} goal={t.kcal} unit="kcal" tone="bg-lime" />
         <Meter label="Proteína" value={L.proteinOf(d)} goal={t.proteinG} unit="g" tone="bg-sky" />
       </div>
       <div className="flex flex-col gap-2 rounded-2xl bg-black/25 p-4">
@@ -66,7 +66,7 @@ function TodayCard({ hq, today, hour, t }: { hq: HqState; today: string; hour: n
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="text-[16px] font-semibold">{next.dish.name}</p>
-              <p className="text-[13px] text-mute">{next.dish.portion} · {fmt(next.dish.kcal)} kcal · {next.dish.p} g proteína</p>
+              <p className="text-[13px] text-mute">{next.dish.portion}</p>
             </div>
             <button type="button" className={btn.ghost} onClick={() => actions.addMeal(today, { name: next.dish!.name.slice(0, 80), kcal: next.dish!.kcal, proteinG: next.dish!.p, source: "manual" })}>
               <Icon name="check" size={16} />Me lo comí
@@ -92,8 +92,8 @@ function WeekMenu({ hq, today }: { hq: HqState; today: string }) {
   return (
     <section aria-labelledby="nutri-menu" className="glass flex flex-col gap-4 rounded-[26px] p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 id="nutri-menu" className="font-display text-[20px] font-bold tracking-[-0.02em]">Tu menú de la semana</h2>
-        <span className="text-[13px] text-mute">Meta {fmt(t.kcal)} kcal · {t.proteinG} g proteína</span>
+        <h2 id="nutri-menu" className="font-display text-[20px] font-bold tracking-[-0.02em]">Tu plan de la semana</h2>
+        <span className="text-[13px] text-mute">≈ {fmt(t.kcal)} kcal · {t.proteinG} g proteína al día</span>
       </div>
       <div role="tablist" aria-label="Día" className="grid grid-cols-7 gap-1">
         {DAY_LABELS.map((l, k) => (
@@ -112,7 +112,7 @@ function WeekMenu({ hq, today }: { hq: HqState; today: string }) {
                 <div className="min-w-0 flex-1">
                   <p className="text-[15px] font-semibold leading-snug">{m.dish.name}</p>
                   <p className="text-[12px] leading-snug text-mute">{N.portionLabel(m.x) && <b className="text-amber">{N.portionLabel(m.x)} · </b>}{m.dish.portion}</p>
-                  <p className="mt-0.5 text-[12px] tnum text-fg/75">{fmt(m.dish.kcal * m.x)} kcal · {Math.round(m.dish.p * m.x)} g P · {Math.round(m.dish.c * m.x)} g C · {Math.round(m.dish.f * m.x)} g G</p>
+                  <p className="mt-0.5 text-[12px] tnum text-fg/75">≈ {fmt(m.dish.kcal * m.x)} kcal · {Math.round(m.dish.p * m.x)} g P · {Math.round(m.dish.c * m.x)} g C · {Math.round(m.dish.f * m.x)} g G</p>
                 </div>
               </div>
               <div className="flex flex-wrap gap-1.5 pl-[4.75rem]">
@@ -120,7 +120,7 @@ function WeekMenu({ hq, today }: { hq: HqState; today: string }) {
                   <button type="button" className={btn.chip} onClick={() => actions.addMeal(today, { name: `${m.dish.name}${m.x !== 1 ? ` (${N.portionLabel(m.x).toLowerCase()})` : ""}`.slice(0, 80), kcal: Math.round(m.dish.kcal * m.x), proteinG: Math.round(m.dish.p * m.x), source: "manual" })}>Me lo comí</button>
                 )}
                 <button type="button" className={btn.chip} aria-expanded={changing === m.slot} onClick={() => setChanging(changing === m.slot ? null : m.slot)}>Cambiar</button>
-                {m.swapped && <button type="button" className={btn.chip} onClick={() => actions.swapDish(key, null)}>Volver al sugerido</button>}
+                {m.swapped && <button type="button" className={btn.chip} onClick={() => actions.swapDish(key, null)}>Volver a la del día</button>}
                 <button type="button" className={btn.chip} onClick={() => actions.toggleSkipDish(m.dish.id)}>No me gusta</button>
               </div>
               {changing === m.slot && (
@@ -128,7 +128,7 @@ function WeekMenu({ hq, today }: { hq: HqState; today: string }) {
                   {N.alternatives(m.dish, hq.nutrition.skip).map((a) => (
                     <li key={a.id}>
                       <button type="button" onClick={() => { actions.swapDish(key, a.id); setChanging(null); }} className="flex w-full items-center justify-between gap-2 rounded-xl bg-black/25 px-3 py-2 text-left text-[13px] hover:bg-white/[0.06]">
-                        <span className="min-w-0 truncate">{a.name}</span><span className="shrink-0 tnum text-mute">{a.kcal} kcal · {a.p} g P</span>
+                        <span className="min-w-0 truncate">{a.name}</span><span className="shrink-0 tnum text-mute">≈ {a.kcal} kcal</span>
                       </button>
                     </li>
                   ))}
@@ -138,7 +138,7 @@ function WeekMenu({ hq, today }: { hq: HqState; today: string }) {
           );
         })}
       </ol>
-      <p className="text-[13px] text-mute">Total del {DAY_LABELS[day]}: <b className="text-fg tnum">{fmt(d.kcal)} kcal</b> · <b className="text-fg tnum">{d.p} g</b> de proteína</p>
+      <p className="text-[13px] text-mute">Total del {DAY_LABELS[day]}: <b className="text-fg tnum">≈ {fmt(d.kcal)} kcal</b> · <b className="text-fg tnum">{d.p} g</b> de proteína</p>
       {hq.nutrition.skip.length > 0 && (
         <p className="text-[12px] text-mute">No te sugiero: {hq.nutrition.skip.map((id) => N.dishById(id)?.name).filter(Boolean).join(", ")}. <button type="button" className="font-semibold text-iris" onClick={() => hq.nutrition.skip.forEach((id) => actions.toggleSkipDish(id))}>Volver a incluir todo</button></p>
       )}
@@ -180,56 +180,40 @@ function Grocery({ menu }: { menu: N.DayMenu[] }) {
   );
 }
 
-function NumbersCard({ hq, t }: { hq: HqState; t: N.Targets }) {
-  const n = hq.nutrition;
-  const act = N.activityFor(hq);
-  const num = (v: string) => (v.trim() === "" ? null : Number(v));
+function PlanCard() {
+  const x = N.PLAN_EXTRAS;
+  const b = x.baseline;
   return (
-    <section aria-labelledby="nutri-num" className="glass flex flex-col gap-4 rounded-[26px] p-5">
-      <div>
-        <h2 id="nutri-num" className="font-display text-[20px] font-bold tracking-[-0.02em]">Tus números</h2>
-        <p className="text-[13px] text-mute">Con tu estatura, edad y sexo calculo tu gasto (fórmula Mifflin-St Jeor) y tu meta según tu objetivo. Peso actual: {N.currentWeight(hq).toFixed(1)} kg.</p>
+    <section aria-labelledby="nutri-plan" className="glass flex flex-col gap-4 rounded-[26px] p-5">
+      <h2 id="nutri-plan" className="font-display text-[20px] font-bold tracking-[-0.02em]">Líquidos, suplementos y snacks</h2>
+      <div className="flex flex-col gap-2">
+        <p className="text-[12px] font-semibold uppercase tracking-wide text-mute">Líquidos · {x.liquidsL} L al día</p>
+        <ul className="flex flex-col gap-1.5">
+          {x.routine.map((r) => (
+            <li key={r.time} className="flex gap-3 rounded-xl bg-black/25 px-3 py-2 text-[14px]"><span className="w-28 shrink-0 font-semibold text-sky">{r.time}</span><span className="text-fg/85">{r.what}</span></li>
+          ))}
+        </ul>
       </div>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <label className="flex flex-col gap-1 text-[12px] text-mute">Estatura (cm)
-          <input className={input} inputMode="numeric" defaultValue={n.heightCm ?? ""} placeholder="175" onBlur={(e) => { const v = num(e.target.value); if (v === null || (v >= 120 && v <= 230)) actions.setNutrition({ heightCm: v === null ? null : Math.round(v) }); }} />
-        </label>
-        <label className="flex flex-col gap-1 text-[12px] text-mute">Edad
-          <input className={input} inputMode="numeric" defaultValue={n.age ?? ""} placeholder="30" onBlur={(e) => { const v = num(e.target.value); if (v === null || (v >= 18 && v <= 90)) actions.setNutrition({ age: v === null ? null : Math.round(v) }); }} />
-        </label>
-        <div className="flex flex-col gap-1 text-[12px] text-mute">Sexo
-          <div role="radiogroup" aria-label="Sexo" className="grid grid-cols-2 gap-1">
-            {([["h", "Hombre"], ["m", "Mujer"]] as const).map(([v, l]) => (
-              <button key={v} type="button" role="radio" aria-checked={n.sex === v} onClick={() => actions.setNutrition({ sex: v })}
-                className={`min-h-11 rounded-xl text-[13px] font-semibold ${n.sex === v ? "bg-white/[0.14] text-fg" : "bg-white/[0.04] text-mute"}`}>{l}</button>
-            ))}
-          </div>
-        </div>
-        <label className="flex flex-col gap-1 text-[12px] text-mute">Actividad
-          <select className={input} value={n.activity ?? ""} onChange={(e) => actions.setNutrition({ activity: (e.target.value || null) as N.Activity | null })}>
-            <option value="">Automática ({N.ACTIVITY[act].label.toLowerCase()})</option>
-            {(Object.keys(N.ACTIVITY) as N.Activity[]).map((a) => <option key={a} value={a}>{N.ACTIVITY[a].label}: {N.ACTIVITY[a].what}</option>)}
-          </select>
-        </label>
+      <div className="flex flex-col gap-2">
+        <p className="text-[12px] font-semibold uppercase tracking-wide text-mute">Suplementos</p>
+        <ul className="grid gap-1.5 sm:grid-cols-2">
+          {x.supplements.map((s) => (
+            <li key={s.name} className="rounded-xl bg-black/25 px-3 py-2 text-[14px]"><b>{s.name}</b><span className="block text-[13px] text-mute">{s.when}</span></li>
+          ))}
+        </ul>
       </div>
-      <dl className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-        {[
-          ["Mantenimiento", t.maintenance ? `${fmt(t.maintenance)} kcal` : "—"],
-          ["Tu meta", `${fmt(t.kcal)} kcal`],
-          ["Proteína", `${t.proteinG} g`],
-          ["Carbohidratos", `${t.carbsG} g`],
-          ["Grasa", `${t.fatG} g`],
-        ].map(([k, v]) => (
-          <div key={k} className="rounded-2xl bg-black/25 p-3"><dt className="text-[11px] font-semibold uppercase tracking-wide text-mute">{k}</dt><dd className="mt-0.5 font-display text-[19px] font-bold tnum">{v}</dd></div>
-        ))}
-      </dl>
-      <p className="text-[13px] text-fg/80">{t.note}</p>
-      {t.basis === "formula" && t.kcal !== hq.profile.calorieTarget && (
-        <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-lime/10 p-3">
-          <p className="min-w-0 flex-1 text-[14px]">Tu meta actual en la app es {fmt(hq.profile.calorieTarget)} kcal. ¿La cambio a {fmt(t.kcal)}?</p>
-          <button type="button" className={btn.primary} onClick={() => actions.updateProfile({ calorieTarget: t.kcal })}>Usar {fmt(t.kcal)} kcal</button>
-        </div>
-      )}
+      <div className="flex flex-col gap-2">
+        <p className="text-[12px] font-semibold uppercase tracking-wide text-mute">Snacks libres</p>
+        <div className="flex flex-wrap gap-1.5">{N.SNACKS.map((s) => <span key={s} className="rounded-full bg-mint/12 px-3 py-1 text-[13px] text-mint">{s}</span>)}</div>
+      </div>
+      <div className="flex flex-col gap-2">
+        <p className="text-[12px] font-semibold uppercase tracking-wide text-mute">Medición inicial · {new Date(`${b.date}T12:00:00`).toLocaleDateString("es-MX", { day: "numeric", month: "long" })}</p>
+        <dl className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+          {[["Peso", `${b.weightKg} kg`], ["IMC", String(b.bmi)], ["Grasa", `${b.fatPct}%`], ["Músculo", `${b.musclePct}%`], ["Agua", `${b.waterPct}%`], ["Cintura", `${b.waistCm} cm`]].map(([k, v]) => (
+            <div key={k} className="rounded-2xl bg-black/25 p-2.5"><dt className="text-[11px] font-semibold uppercase tracking-wide text-mute">{k}</dt><dd className="mt-0.5 font-display text-[17px] font-bold tnum">{v}</dd></div>
+          ))}
+        </dl>
+      </div>
     </section>
   );
 }
@@ -283,7 +267,7 @@ export function NutriTip({ hq, today, hour }: { hq: HqState; today: string; hour
     <Link href="/nutri" className="glass flex items-center gap-3 rounded-2xl px-4 py-3 hover:bg-white/[0.06]">
       <span aria-hidden="true" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-mint/15 text-mint"><Icon name="leaf" size={20} /></span>
       <span className="flex min-w-0 flex-1 flex-col">
-        <span className="text-[12px] font-semibold uppercase tracking-wide text-mute">Tu nutriólogo · {slot.label}</span>
+        <span className="text-[12px] font-semibold uppercase tracking-wide text-mute">Tu plan · {slot.label} {slot.time}</span>
         <span className="truncate text-[14px] font-semibold">{next.dish?.name ?? "Revisa tu menú"}</span>
         <span className="truncate text-[12px] text-mute">{next.text}</span>
       </span>

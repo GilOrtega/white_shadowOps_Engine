@@ -59,6 +59,8 @@ export const DayLogSchema = z.object({
   focusBlocks: z.number().int().min(0).max(20).default(0),
   /** Hábitos marcados ese día (ids). Para los de "evitar", marcado = lo cumpliste (no lo hiciste). */
   habitsDone: z.array(z.string().max(40)).max(40).default([]),
+  /** Indicaciones de la nutrióloga cumplidas ese día (ids de PLAN_CHECKS). */
+  planDone: z.array(z.string().max(20)).max(20).default([]),
   /** Pendientes de solo ese día que agregaste tú. */
   todos: z.array(z.object({
     id: z.string().min(1).max(40),
@@ -175,3 +177,9 @@ export const HqStateSchema = z.object({
 export type HqState = z.infer<typeof HqStateSchema>;
 
 export const defaultState = (): HqState => HqStateSchema.parse({});
+
+/** Reinicio del reto (15 nov 2026): el arranque original del 23 oct pasa al 15 nov, así el día 60 cae el 13 de enero. */
+export const RESTART = { from: "2026-10-23", to: "2026-11-15" } as const;
+export function migrateRestart(s: HqState): HqState {
+  return s.profile.startDate === RESTART.from ? { ...s, profile: { ...s.profile, startDate: RESTART.to } } : s;
+}

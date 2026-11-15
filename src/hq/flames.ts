@@ -9,11 +9,23 @@ import type { HqState } from "./schemas";
  */
 export const FLAME_AT = 0.8;
 
+/** Desde cuándo cuentan las indicaciones de la nutrióloga en tu lista. */
+export const PLAN_FROM = "2026-11-15";
+/** Indicaciones diarias de la nutrióloga (líquidos y suplementos). */
+export const PLAN_CHECKS = [
+  { id: "aloe", title: "Agua con aloe vera en ayunas", detail: "1 taza + 2 cdas", emoji: "🌵" },
+  { id: "te", title: "1 L de té (manzanilla + verde)", detail: "9:00 a 1:30 pm", emoji: "🍵" },
+  { id: "agua", title: "1½ L de agua con clorofila", detail: "4:00 a 8:30 pm", emoji: "💧" },
+  { id: "shake", title: "Batido de proteína", detail: "5:00 pm", emoji: "🥤" },
+  { id: "supl", title: "Suplementos del día", detail: "Ashwagandha mañana, vitamina C, creatina", emoji: "💊" },
+  { id: "ashw", title: "Ashwagandha de la noche", detail: "11:30 pm", emoji: "🌙" },
+] as const;
+
 export type ChecklistItem = {
   id: string;
   title: string;
   detail?: string;
-  group: "reto" | "habitos" | "tuyo";
+  group: "reto" | "habitos" | "plan" | "tuyo";
   done: boolean;
   /** Se marca solo (comidas, calorías): no tiene casilla. */
   auto: boolean;
@@ -32,6 +44,10 @@ export function dayChecklist(s: HqState, date: string) {
   for (const h of s.habits) {
     if (!isDue(h, date)) continue;
     items.push({ id: `h:${h.id}`, title: h.kind === "evitar" ? `Sin ${h.title.replace(/^sin\s+/i, "")}` : h.title, group: "habitos", done: isDone(s, h, date), auto: false, required: false, emoji: h.emoji });
+  }
+  const planDone = L.dayOf(s, date).planDone ?? [];
+  if (date >= PLAN_FROM) for (const c of PLAN_CHECKS) {
+    items.push({ id: `n:${c.id}`, title: c.title, detail: c.detail, group: "plan", done: planDone.includes(c.id), auto: false, required: false, emoji: c.emoji });
   }
   for (const t of L.dayOf(s, date).todos ?? []) {
     items.push({ id: `t:${t.id}`, title: t.title, group: "tuyo", done: t.done, auto: false, required: false });
