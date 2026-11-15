@@ -1,0 +1,62 @@
+# Editor de Shorts de WhiteShadow. Lo arranca la app (Contenido → Motor) con el id del trabajo.
+# Gratis en repos públicos. No imprime URLs ni textos de tus videos.
+name: render-short
+
+on:
+  workflow_dispatch:
+    inputs:
+      job_id:
+        description: "Id del Short"
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: render-short-${{ inputs.job_id }}
+  cancel-in-progress: false
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      JOB_ID: ${{ inputs.job_id }}
+      WSO_URL: https://whiteshadow-ops-j4zu.vercel.app
+      WSO_API_SECRET: ${{ secrets.WSO_API_SECRET }}
+      WHISPER_MODEL: small
+      HF_HUB_DISABLE_PROGRESS_BARS: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validar id
+        run: |
+          if ! [[ "$JOB_ID" =~ ^[a-z0-9]{6,24}$ ]]; then echo "id inválido"; exit 1; fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: engine/requirements.txt
+
+      - name: ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg fonts-dejavu-core > /dev/null
+
+      - name: Modelo de Whisper (caché)
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: whisper-small-v1
+
+      - name: Dependencias
+        run: |
+          npm ci --no-audit --no-fund --loglevel=error
+          pip install -q -r engine/requirements.txt
+
+      - name: Editar el Short
+        run: npx tsx engine/render-short.ts
