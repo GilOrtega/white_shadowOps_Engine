@@ -83,6 +83,8 @@ export function buildAss(args: {
   height: number;
   /** Auto-Hook: texto grande arriba durante los primeros segundos (lo que evita que deslicen). */
   hook?: { text: string; durationSec: number } | null;
+  /** Etiqueta fija arriba a la izquierda todo el video (ej. "DÍA 3 DE 60"). */
+  badge?: string | null;
 }): string {
   const { style } = args;
   const rel = wordsInClip(args.words, args.clipStart, args.clipEnd);
@@ -137,12 +139,33 @@ export function buildAss(args: {
       Math.round(args.height * 0.14),
       1,
     ].join(","),
+    // Etiqueta: pequeña, lima sobre caja negra, arriba-izquierda.
+    [
+      "Style: Badge",
+      style.fontName,
+      Math.round(style.fontSize * 0.5),
+      hexToAss("#D4FF3A"),
+      hexToAss("#D4FF3A"),
+      hexToAss("#000000", 0x40),
+      hexToAss("#000000", 0x40),
+      -1,
+      0, 0, 0, 100, 100, 1, 0,
+      3,
+      12,
+      0,
+      7, // arriba-izquierda
+      60, 60,
+      Math.round(args.height * 0.06),
+      1,
+    ].join(","),
     "",
     "[Events]",
     "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
   ];
 
   const events: string[] = [];
+  const badge = args.badge?.trim();
+  if (badge) events.push(`Dialogue: 2,${assTime(0)},${assTime(Math.max(0.5, args.clipEnd - args.clipStart))},Badge,,0,0,0,,${escapeAss(badge)}`);
   const hookText = args.hook?.text.trim();
   if (hookText) {
     const hookEnd = Math.min(args.hook!.durationSec, Math.max(0.5, args.clipEnd - args.clipStart));
