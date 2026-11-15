@@ -1,4 +1,4 @@
-import { HqStateSchema, type HqState } from "@/hq/schemas";
+import { HqStateSchema, migrateRestart, type HqState } from "@/hq/schemas";
 import { kvGet, kvSet } from "./kv";
 
 /**
@@ -12,7 +12,7 @@ export async function getCloud(): Promise<CloudState | null> {
   const raw = await kvGet<{ state: unknown; updatedAt: number; device: string }>(KEY);
   if (!raw) return null;
   const p = HqStateSchema.safeParse(raw.state);
-  return p.success ? { state: p.data, updatedAt: raw.updatedAt, device: raw.device } : null;
+  return p.success ? { state: migrateRestart(p.data), updatedAt: raw.updatedAt, device: raw.device } : null;
 }
 
 export async function putCloud(c: CloudState) {

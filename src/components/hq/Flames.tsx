@@ -62,7 +62,7 @@ export function TodayHeader({ hq, today, dateLabel }: { hq: HqState; today: stri
   );
 }
 
-const GROUP_LABEL: Record<F.ChecklistItem["group"], string> = { reto: "El reto", habitos: "Hábitos", tuyo: "Tus pendientes" };
+const GROUP_LABEL: Record<F.ChecklistItem["group"], string> = { reto: "El reto", habitos: "Hábitos", plan: "Plan de tu nutrióloga", tuyo: "Tus pendientes" };
 
 /** La lista del día: misiones del reto + hábitos + lo que tú agregues. ≥ 80 % = flama. */
 export function DayChecklist({ hq, today }: { hq: HqState; today: string }) {
@@ -71,7 +71,7 @@ export function DayChecklist({ hq, today }: { hq: HqState; today: string }) {
   const [daily, setDaily] = useState(false);
   const pct = Math.round(c.pct * 100);
   const flame = c.pct >= F.FLAME_AT;
-  const groups = (["reto", "habitos", "tuyo"] as const).map((g) => ({ g, items: c.items.filter((i) => i.group === g) })).filter((x) => x.items.length || x.g === "tuyo");
+  const groups = (["reto", "habitos", "plan", "tuyo"] as const).map((g) => ({ g, items: c.items.filter((i) => i.group === g) })).filter((x) => x.items.length || x.g === "tuyo");
 
   const add = (e: React.FormEvent) => {
     e.preventDefault();

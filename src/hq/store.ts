@@ -4,7 +4,7 @@ import { useSyncExternalStore } from "react";
 import { dayOf } from "./logic";
 import { NutritionSchema } from "./nutrition-schema";
 import type { RadarIdea } from "./radar";
-import { ContentItemSchema, defaultState, HabitSchema, HqStateSchema, IncomeSchema, MealSchema, ProjectSchema, type ContentItem, type DayLog, type Habit, type Feeling, type HqState, type Meal, type Plan, type Profile } from "./schemas";
+import { ContentItemSchema, defaultState, HabitSchema, migrateRestart, HqStateSchema, IncomeSchema, MealSchema, ProjectSchema, type ContentItem, type DayLog, type Habit, type Feeling, type HqState, type Meal, type Plan, type Profile } from "./schemas";
 
 /**
  * Guardado del centro de mando. Hoy vive en este navegador (localStorage);
@@ -18,15 +18,15 @@ const listeners = new Set<() => void>();
 function read(): HqState {
   try {
     const raw = window.localStorage.getItem(KEY);
-    if (!raw) return defaultState();
+    if (!raw) return migrateRestart(defaultState());
     const parsed = HqStateSchema.safeParse(JSON.parse(raw));
-    if (parsed.success) return parsed.data;
+    if (parsed.success) return migrateRestart(parsed.data);
     // Nunca se pierde lo guardado: se aparta la copia que no se pudo leer.
     window.localStorage.setItem(`${KEY}.corrupto`, raw);
   } catch {
     /* sin acceso a localStorage: se trabaja en memoria */
   }
-  return defaultState();
+  return migrateRestart(defaultState());
 }
 
 function getSnapshot(): HqState {
@@ -76,7 +76,7 @@ function commit(next: HqState) {
 
 /** Adopta la copia de la nube sin perder tu clave de acceso local. */
 export function adoptCloud(state: HqState, updatedAt: number) {
-  cache = HqStateSchema.parse({ ...state, accessKey: getSnapshot().accessKey });
+  cache = migrateRestart(HqStateSchema.parse({ ...state, accessKey: getSnapshot().accessKey }));
   persist(cache, updatedAt);
   listeners.forEach((l) => l());
 }
@@ -244,6 +244,10 @@ export const actions = {
     else if (kind === "m" && id === "clip") patchDay(date, { clipDone: !d.clipDone });
     else if (kind === "h") actions.toggleHabit(date, id);
     else if (kind === "t") actions.toggleTodo(date, id);
+    else if (kind === "n") {
+      const done = d.planDone ?? [];
+      patchDay(date, { planDone: done.includes(id) ? done.filter((x) => x !== id) : [...done, id] });
+    }
   },
   toggleHabit(date: string, id: string) {
     const done = dayOf(getSnapshot(), date).habitsDone;

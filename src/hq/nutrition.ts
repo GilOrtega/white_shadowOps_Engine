@@ -2,9 +2,8 @@ import * as L from "./logic";
 import type { HqState } from "./schemas";
 
 /**
- * Nutriólogo de WhiteShadow (orientación general, no sustituye a un nutriólogo con cédula).
- * Calcula tu gasto y tu meta con Mifflin-St Jeor, reparte macros y arma un menú mexicano
- * con porciones que se acerca a tu meta. Todo funciona sin IA.
+ * Plan de alimentación de tu nutrióloga dentro de WhiteShadow: rota sus opciones por día,
+ * te dice qué toca ahorita y arma la lista del súper. Las calorías son estimaciones nuestras.
  */
 
 import { ActivitySchema, type Activity, NutritionSchema, type Nutrition } from "./nutrition-schema";
@@ -34,14 +33,14 @@ export function activityFor(s: HqState): Activity {
 }
 
 export type Targets = {
-  /** Gasto de mantenimiento estimado (null si faltan datos). */
+  /** Gasto de mantenimiento estimado con fórmula (null si faltan datos). */
   maintenance: number | null;
+  /** Lo que da en promedio un día del plan de tu nutrióloga (aproximado). */
   kcal: number;
   proteinG: number;
   carbsG: number;
   fatG: number;
-  /** De dónde salió la meta. */
-  basis: "formula" | "perfil";
+  basis: "plan";
   note: string;
 };
 
@@ -52,36 +51,38 @@ export function bmr(weightKg: number, heightCm: number, age: number, sex: "h" | 
   return 10 * weightKg + 6.25 * heightCm - 5 * age + (sex === "h" ? 5 : -161);
 }
 
+/** Promedio de un día del plan: una opción cualquiera de cada tiempo + la proteína de las 5. */
+function planAverage() {
+  const avg = (slot: Slot, k: "kcal" | "p" | "c" | "f") => {
+    const l = DISHES.filter((d) => d.slot === slot);
+    return l.reduce((x, d) => x + d[k], 0) / l.length;
+  };
+  const sum = (k: "kcal" | "p" | "c" | "f") => (["desayuno", "comida", "colacion", "cena"] as Slot[]).reduce((x, sl) => x + avg(sl, k), 0);
+  return { kcal: sum("kcal"), p: sum("p"), c: sum("c"), f: sum("f") };
+}
+
 export function targetsFor(s: HqState): Targets {
   const w = currentWeight(s);
   const n = s.nutrition;
-  const goal = s.plan?.goal ?? "bajar";
-  let kcal = s.profile.calorieTarget;
-  let maintenance: number | null = null;
-  let basis: Targets["basis"] = "perfil";
-  let note = "Completa estatura, edad y sexo para calcular tu meta con fórmula.";
-  if (n.heightCm && n.age && n.sex) {
-    maintenance = round(bmr(w, n.heightCm, n.age, n.sex) * ACTIVITY[activityFor(s)].factor, 10);
-    const adj = goal === "bajar" ? -0.2 : goal === "ambas" ? -0.15 : 0.1;
-    kcal = Math.max(KCAL_FLOOR, round(maintenance * (1 + adj), 50));
-    basis = "formula";
-    note = goal === "bajar" ? "Déficit de ~20 %: bajas sin matarte de hambre."
-      : goal === "ambas" ? "Déficit moderado (~15 %) con proteína alta: bajar grasa y cuidar músculo."
-        : "Superávit ligero (~10 %) para construir músculo sin subir de más.";
-    if (kcal === KCAL_FLOOR && maintenance * (1 + adj) < KCAL_FLOOR) note += " Se respetó el mínimo de 1,500 kcal.";
-  }
-  const proteinG = Math.min(230, round(w * (goal === "musculo" ? 1.8 : 2.0), 5));
-  const fatG = round((kcal * 0.27) / 9, 5);
-  const carbsG = Math.max(50, round((kcal - proteinG * 4 - fatG * 9) / 4, 5));
-  return { maintenance, kcal, proteinG, carbsG, fatG, basis, note };
+  const maintenance = n.heightCm && n.age && n.sex ? round(bmr(w, n.heightCm, n.age, n.sex) * ACTIVITY[activityFor(s)].factor, 10) : null;
+  const a = planAverage();
+  return {
+    maintenance,
+    kcal: round(a.kcal, 50),
+    proteinG: round(a.p, 5),
+    carbsG: round(a.c, 5),
+    fatG: round(a.f, 5),
+    basis: "plan",
+    note: "Tu plan lo armó tu nutrióloga y se lleva por porciones, no contando calorías. Las cifras son aproximadas, solo para que veas por dónde andas.",
+  };
 }
 
-// --- Recetario --------------------------------------------------------------------
+// --- Plan de la nutrióloga (Lic. Ma. Eva Vásquez, nov 2026) -------------------------
 export type Slot = "desayuno" | "comida" | "cena" | "colacion";
 export const SLOTS: { id: Slot; label: string; time: string }[] = [
-  { id: "desayuno", label: "Desayuno", time: "8:00" },
+  { id: "desayuno", label: "Desayuno", time: "9:00" },
   { id: "comida", label: "Comida", time: "14:00" },
-  { id: "colacion", label: "Colación", time: "17:30" },
+  { id: "colacion", label: "Proteína", time: "17:00" },
   { id: "cena", label: "Cena", time: "20:30" },
 ];
 type Ing = { item: string; qty: number; unit: string };
@@ -89,67 +90,70 @@ export type Dish = { id: string; name: string; slot: Slot; kcal: number; p: numb
 
 const i = (item: string, qty: number, unit: string): Ing => ({ item, qty, unit });
 
-/** Valores aproximados por porción (tablas de composición comunes); sirven para orientarte, no son exactos. */
+/** Porciones tal cual vienen en el plan. Calorías y macros son estimaciones nuestras, no de la nutrióloga. */
 export const DISHES: Dish[] = [
   // Desayunos
-  { id: "huevo-mexicana", name: "Huevos a la mexicana con frijoles", slot: "desayuno", kcal: 520, p: 28, c: 48, f: 24, portion: "3 huevos, 2 tortillas de maíz, ½ taza de frijoles", ing: [i("Huevo", 3, "pzas"), i("Tortilla de maíz", 2, "pzas"), i("Frijoles", 0.5, "taza"), i("Jitomate", 1, "pza"), i("Cebolla", 0.25, "pza")] },
-  { id: "avena-claras", name: "Avena con plátano y claras", slot: "desayuno", kcal: 430, p: 32, c: 62, f: 6, portion: "½ taza de avena con leche light, 4 claras, 1 plátano", ing: [i("Avena", 0.5, "taza"), i("Leche light", 250, "ml"), i("Huevo (claras)", 4, "pzas"), i("Plátano", 1, "pza")] },
-  { id: "molletes", name: "Molletes integrales con panela", slot: "desayuno", kcal: 480, p: 26, c: 58, f: 14, portion: "2 mitades de bolillo integral, frijol, 60 g de panela, pico de gallo", ing: [i("Bolillo integral", 1, "pza"), i("Frijoles", 0.5, "taza"), i("Queso panela", 60, "g"), i("Jitomate", 1, "pza")] },
-  { id: "licuado-yogur", name: "Licuado de yogur griego, avena y plátano", slot: "desayuno", kcal: 430, p: 32, c: 58, f: 8, portion: "200 g de yogur griego natural, 250 ml de leche light, 30 g de avena, 1 plátano", ing: [i("Yogur griego natural", 200, "g"), i("Leche light", 250, "ml"), i("Avena", 0.25, "taza"), i("Plátano", 1, "pza")] },
-  { id: "chilaquiles-pollo", name: "Chilaquiles horneados con pollo", slot: "desayuno", kcal: 520, p: 38, c: 50, f: 18, portion: "40 g de totopo horneado, salsa verde, 100 g de pollo, queso fresco", ing: [i("Totopos horneados", 40, "g"), i("Pechuga de pollo", 100, "g"), i("Tomate verde", 3, "pzas"), i("Queso fresco", 30, "g")] },
+  { id: "d-mexicana", name: "Huevo a la mexicana", slot: "desayuno", kcal: 360, p: 37, c: 23, f: 17, portion: "2 huevos + 3 claras + chile, tomate y cebolla + 2 pz de pan Bimbo Cero + aguacate", ing: [i("Huevo", 2, "pzas"), i("Huevo (claras)", 3, "pzas"), i("Pan Bimbo Cero", 2, "rebanadas"), i("Tomate", 1, "pza"), i("Cebolla", 0.25, "pza"), i("Chile", 1, "pza"), i("Aguacate", 0.25, "pza")] },
+  { id: "d-estrellado", name: "Huevo estrellado", slot: "desayuno", kcal: 440, p: 17, c: 42, f: 22, portion: "2 huevos + salsa mexicana + 3 tortillas de maíz + aguacate", ing: [i("Huevo", 2, "pzas"), i("Tortilla de maíz", 3, "pzas"), i("Tomate", 1, "pza"), i("Aguacate", 0.25, "pza")] },
+  { id: "d-machaca", name: "Huevo con machaca", slot: "desayuno", kcal: 465, p: 42, c: 42, f: 14, portion: "2 huevos + 3 claras + 3 cdas de machaca + verdura + 3 tortillas de maíz", ing: [i("Huevo", 2, "pzas"), i("Huevo (claras)", 3, "pzas"), i("Machaca", 3, "cdas"), i("Tortilla de maíz", 3, "pzas"), i("Verdura", 0.5, "taza")] },
+  { id: "d-jamon", name: "Huevo con jamón", slot: "desayuno", kcal: 380, p: 37, c: 26, f: 12, portion: "2 huevos + 3 claras + 3 rebanadas de jamón + 2 tortillas de maíz", ing: [i("Huevo", 2, "pzas"), i("Huevo (claras)", 3, "pzas"), i("Jamón", 3, "rebanadas"), i("Tortilla de maíz", 2, "pzas")] },
   // Comidas
-  { id: "pollo-arroz", name: "Pechuga asada con arroz y ensalada", slot: "comida", kcal: 640, p: 55, c: 62, f: 16, portion: "180 g de pechuga, 1 taza de arroz, ensalada, ¼ de aguacate", ing: [i("Pechuga de pollo", 180, "g"), i("Arroz", 0.5, "taza (crudo)"), i("Lechuga", 0.25, "pza"), i("Aguacate", 0.25, "pza")] },
-  { id: "tacos-bistec", name: "Tacos de bistec con frijoles de la olla", slot: "comida", kcal: 700, p: 48, c: 70, f: 22, portion: "4 tacos (150 g de bistec) con cebolla y cilantro, ½ taza de frijoles", ing: [i("Bistec de res", 150, "g"), i("Tortilla de maíz", 4, "pzas"), i("Frijoles", 0.5, "taza"), i("Cebolla", 0.25, "pza")] },
-  { id: "caldo-res", name: "Caldo de res con verduras", slot: "comida", kcal: 520, p: 40, c: 45, f: 18, portion: "1 plato grande (150 g de carne), 2 tortillas", ing: [i("Chambarete de res", 150, "g"), i("Calabacita", 1, "pza"), i("Zanahoria", 1, "pza"), i("Elote", 0.5, "pza"), i("Tortilla de maíz", 2, "pzas")] },
-  { id: "tinga-tostadas", name: "Tinga de pollo en tostadas horneadas", slot: "comida", kcal: 560, p: 45, c: 50, f: 18, portion: "200 g de tinga, 3 tostadas horneadas, lechuga", ing: [i("Pechuga de pollo", 160, "g"), i("Tostadas horneadas", 3, "pzas"), i("Jitomate", 2, "pzas"), i("Chipotle", 1, "pza")] },
-  { id: "pescado-arroz", name: "Filete de pescado a la plancha con arroz", slot: "comida", kcal: 560, p: 48, c: 55, f: 14, portion: "200 g de pescado blanco, ¾ de taza de arroz, ensalada", ing: [i("Filete de pescado", 200, "g"), i("Arroz", 0.4, "taza (crudo)"), i("Pepino", 1, "pza"), i("Limón", 2, "pzas")] },
-  { id: "carne-nopales", name: "Carne asada con nopales y frijoles", slot: "comida", kcal: 680, p: 52, c: 50, f: 28, portion: "180 g de carne asada, nopales asados, ½ taza de frijoles, 2 tortillas", ing: [i("Arrachera o diezmillo", 180, "g"), i("Nopales", 3, "pzas"), i("Frijoles", 0.5, "taza"), i("Tortilla de maíz", 2, "pzas")] },
-  { id: "tostadas-atun", name: "Tostadas de atún con pico de gallo", slot: "comida", kcal: 520, p: 50, c: 40, f: 16, portion: "2 latas de atún en agua, 3 tostadas horneadas, ¼ de aguacate", ing: [i("Atún en agua", 2, "latas"), i("Tostadas horneadas", 3, "pzas"), i("Jitomate", 1, "pza"), i("Aguacate", 0.25, "pza")] },
+  { id: "c-fajitas", name: "Fajitas de res con brócoli y coliflor", slot: "comida", kcal: 850, p: 76, c: 60, f: 30, portion: "2 tz de carne de res + brócoli y coliflor libre + 1 tz de arroz + pepino, tomate y aguacate", ing: [i("Carne de res (fajitas)", 2, "tazas"), i("Brócoli", 0.5, "pza"), i("Coliflor", 0.25, "pza"), i("Arroz", 0.33, "taza (crudo)"), i("Pepino", 1, "pza"), i("Tomate", 1, "pza"), i("Aguacate", 0.25, "pza")] },
+  { id: "c-pollo", name: "Salteado de pollo", slot: "comida", kcal: 900, p: 105, c: 65, f: 20, portion: "2⅓ tz de pechuga + zanahoria y calabaza al vapor + 2 cdas de elote + aguacate + 4 tortillas de maíz", ing: [i("Pechuga de pollo", 2.33, "tazas"), i("Zanahoria", 1, "pza"), i("Calabacita", 1, "pza"), i("Elote", 2, "cdas"), i("Aguacate", 0.25, "pza"), i("Tortilla de maíz", 4, "pzas")] },
+  { id: "c-pescado", name: "Pescado a la plancha", slot: "comida", kcal: 660, p: 70, c: 35, f: 26, portion: "2 pz de tilapia + aguacate + 1 papa cocida + ensalada verde + vinagreta de aceite de oliva, limón y pimienta", ing: [i("Filete de tilapia", 2, "pzas"), i("Papa", 1, "pza"), i("Ensalada verde", 1, "bolsa"), i("Aceite de oliva", 1, "cda"), i("Limón", 1, "pza"), i("Aguacate", 0.25, "pza")] },
+  { id: "c-tostadas", name: "Tostadas de carne molida", slot: "comida", kcal: 900, p: 62, c: 85, f: 34, portion: "1½ tz de carne de res + zanahoria y verduras al gusto + ¾ tz de frijoles + 5 tostadas horneadas", ing: [i("Carne molida de res", 1.5, "tazas"), i("Zanahoria", 1, "pza"), i("Frijoles", 0.75, "taza"), i("Tostadas horneadas", 5, "pzas")] },
+  { id: "c-ceviche", name: "Ceviche de pescado", slot: "comida", kcal: 600, p: 62, c: 55, f: 14, portion: "Ceviche en cantidad libre + aguacate + 5 tostadas", ing: [i("Pescado para ceviche", 250, "g"), i("Limón", 4, "pzas"), i("Tomate", 1, "pza"), i("Pepino", 1, "pza"), i("Aguacate", 0.25, "pza"), i("Tostadas horneadas", 5, "pzas")] },
+  { id: "c-pechuga", name: "Pechuga a la plancha", slot: "comida", kcal: 700, p: 90, c: 20, f: 28, portion: "2 tz de pechuga + salsa al gusto + ensalada verde al gusto + vinagreta de aceite de oliva, limón y pimienta + 2 cdas de arándanos + 3 nueces", ing: [i("Pechuga de pollo", 2, "tazas"), i("Ensalada verde", 1, "bolsa"), i("Aceite de oliva", 1, "cda"), i("Limón", 1, "pza"), i("Arándanos", 2, "cdas"), i("Nuez", 3, "pzas")] },
+  // 5:00 pm
+  { id: "p-shake", name: "Batido de proteína", slot: "colacion", kcal: 180, p: 26, c: 12, f: 4, portion: "1 scoop de proteína + leche vegetal + 4 fresas", ing: [i("Proteína en polvo", 1, "scoop"), i("Leche vegetal", 250, "ml"), i("Fresas", 4, "pzas")] },
   // Cenas
-  { id: "quesadillas-pollo", name: "Quesadillas de pollo con panela", slot: "cena", kcal: 460, p: 36, c: 40, f: 16, portion: "2 tortillas de maíz, 80 g de pollo, 50 g de panela, salsa", ing: [i("Tortilla de maíz", 2, "pzas"), i("Pechuga de pollo", 80, "g"), i("Queso panela", 50, "g")] },
-  { id: "ensalada-pollo", name: "Ensalada de pollo y garbanzo", slot: "cena", kcal: 450, p: 42, c: 30, f: 16, portion: "150 g de pollo, ½ taza de garbanzo, verduras, 1 cda de aceite de oliva", ing: [i("Pechuga de pollo", 150, "g"), i("Garbanzo cocido", 0.5, "taza"), i("Lechuga", 0.25, "pza"), i("Aceite de oliva", 1, "cda")] },
-  { id: "huevo-nopal", name: "Huevos con nopales", slot: "cena", kcal: 330, p: 28, c: 20, f: 14, portion: "2 huevos + 3 claras, nopales, 1 tortilla", ing: [i("Huevo", 2, "pzas"), i("Huevo (claras)", 3, "pzas"), i("Nopales", 2, "pzas"), i("Tortilla de maíz", 1, "pza")] },
-  { id: "sincronizadas", name: "Sincronizadas de pavo y panela", slot: "cena", kcal: 420, p: 30, c: 40, f: 14, portion: "2 tortillas de harina integral, 60 g de pechuga de pavo, 40 g de panela", ing: [i("Tortilla de harina integral", 2, "pzas"), i("Pechuga de pavo", 60, "g"), i("Queso panela", 40, "g")] },
-  { id: "bowl-yogur", name: "Bowl de yogur griego con fruta", slot: "cena", kcal: 380, p: 28, c: 48, f: 8, portion: "250 g de yogur griego natural, 1 taza de fruta, 30 g de granola", ing: [i("Yogur griego natural", 250, "g"), i("Fruta de temporada", 1, "taza"), i("Granola", 30, "g")] },
-  // Colaciones
-  { id: "manzana-cacahuate", name: "Manzana con cacahuates", slot: "colacion", kcal: 230, p: 7, c: 28, f: 11, portion: "1 manzana, 20 g de cacahuate natural", ing: [i("Manzana", 1, "pza"), i("Cacahuate natural", 20, "g")] },
-  { id: "jicama-panela", name: "Jícama y pepino con panela", slot: "colacion", kcal: 200, p: 14, c: 18, f: 8, portion: "1 taza de jícama y pepino con limón y chile, 60 g de panela", ing: [i("Jícama", 0.5, "pza"), i("Pepino", 1, "pza"), i("Queso panela", 60, "g")] },
-  { id: "yogur-nueces", name: "Yogur griego con nueces", slot: "colacion", kcal: 220, p: 18, c: 10, f: 12, portion: "170 g de yogur griego natural, 15 g de nuez", ing: [i("Yogur griego natural", 170, "g"), i("Nuez", 15, "g")] },
-  { id: "atun-galletas", name: "Atún con galletas saladas", slot: "colacion", kcal: 250, p: 28, c: 20, f: 6, portion: "1 lata de atún en agua, 6 galletas saladas", ing: [i("Atún en agua", 1, "lata"), i("Galletas saladas", 6, "pzas")] },
-  { id: "huevo-naranja", name: "Huevos cocidos y naranja", slot: "colacion", kcal: 220, p: 13, c: 16, f: 10, portion: "2 huevos cocidos, 1 naranja", ing: [i("Huevo", 2, "pzas"), i("Naranja", 1, "pza")] },
+  { id: "n-fruta", name: "Ensalada de fruta", slot: "cena", kcal: 300, p: 9, c: 50, f: 9, portion: "1½ tz de fruta picada + ½ tz de yogurt + 3 nueces + 2 cdas de granola", ing: [i("Fruta picada", 1.5, "tazas"), i("Yogurt", 0.5, "taza"), i("Nuez", 3, "pzas"), i("Granola", 2, "cdas")] },
+  { id: "n-atun", name: "Tostadas de atún", slot: "cena", kcal: 455, p: 50, c: 38, f: 10, portion: "180 g de atún con verduras + 1 cdta de mayonesa + 4 tostadas horneadas", ing: [i("Atún en agua", 180, "g"), i("Verdura", 0.5, "taza"), i("Mayonesa", 1, "cdta"), i("Tostadas horneadas", 4, "pzas")] },
+  { id: "n-sincronizada", name: "Sincronizada", slot: "cena", kcal: 480, p: 27, c: 42, f: 22, portion: "3 tortillas de maíz + 3 cdas de queso + 3 rebanadas de jamón + verdura + aguacate", ing: [i("Tortilla de maíz", 3, "pzas"), i("Queso", 3, "cdas"), i("Jamón", 3, "rebanadas"), i("Verdura", 0.5, "taza"), i("Aguacate", 0.25, "pza")] },
+  { id: "n-sandwich", name: "Sándwich de jamón", slot: "cena", kcal: 295, p: 18, c: 22, f: 14, portion: "3 rebanadas de jamón de pavo + 2 pz de pan Bimbo Cero + verdura + aguacate + 1 cdta de mayonesa", ing: [i("Jamón de pavo", 3, "rebanadas"), i("Pan Bimbo Cero", 2, "rebanadas"), i("Verdura", 0.5, "taza"), i("Aguacate", 0.25, "pza"), i("Mayonesa", 1, "cdta")] },
 ];
+
+/** Snacks libres del plan (entre comidas, cuando te dé hambre). */
+export const SNACKS = ["Gelatina sin azúcar", "Pepino", "Jícama", "Fruta", "18 almendras", "8 nueces"];
+
+/** Líquidos y suplementos que indicó la nutrióloga. */
+export const PLAN_EXTRAS = {
+  liquidsL: 2.9,
+  routine: [
+    { time: "Al despertar", what: "1 taza de agua + 2 cdas de aloe vera (en ayunas)" },
+    { time: "9:00 – 1:30 pm", what: "1 litro de té: 1 sobre de manzanilla + 1 sobre de té verde" },
+    { time: "4:00 – 8:30 pm", what: "1½ litros de agua + 2 cdas de clorofila" },
+  ],
+  supplements: [
+    { name: "Ashwagandha", when: "1 cápsula en la mañana y 1 a las 11:30 pm" },
+    { name: "Vitamina C", when: "Durante el día" },
+    { name: "Creatina", when: "Diario (dosis por confirmar con tu nutrióloga)" },
+    { name: "Proteína", when: "5:00 pm, en el batido" },
+  ],
+  /** Medición inicial con la nutrióloga. */
+  baseline: { date: "2026-11-04", weightKg: 84.1, bmi: 27.1, fatPct: 21.2, waterPct: 57.7, musclePct: 42.9, waistCm: 94 },
+};
+
 export const dishById = (id: string) => DISHES.find((d) => d.id === id) ?? null;
 
-export type MenuMeal = { slot: Slot; dish: Dish; swapped: boolean; /** Porción: 1, 1.25 o 1.5. */ x: number };
+export type MenuMeal = { slot: Slot; dish: Dish; swapped: boolean; /** Siempre 1: las porciones son las del plan. */ x: number };
 export type DayMenu = { day: number; meals: MenuMeal[]; kcal: number; p: number };
-const PORTIONS = [1, 1.25, 1.5];
-export const portionLabel = (x: number) => (x === 1 ? "" : x === 1.25 ? "Porción y cuarto" : "Porción y media");
+export const portionLabel = (x: number) => (x === 1 ? "" : `Porción ×${x}`);
 
-/** Elige la combinación de platillos más cercana a tu meta (calorías y proteína), variando día con día. */
-export function dayMenu(t: Targets, day: number, opts: { skip?: string[]; avoid?: string[]; fixed?: Partial<Record<Slot, string>> } = {}): DayMenu {
-  const pool = (slot: Slot) => {
-    const fixed = opts.fixed?.[slot] ? dishById(opts.fixed[slot]!) : null;
-    if (fixed) return [fixed];
-    const list = DISHES.filter((d) => d.slot === slot && !opts.skip?.includes(d.id));
-    return list.length ? list : DISHES.filter((d) => d.slot === slot);
-  };
-  const [D, C, S, N] = (["desayuno", "comida", "colacion", "cena"] as Slot[]).map(pool) as [Dish[], Dish[], Dish[], Dish[]];
-  let best: { score: number; combo: Dish[]; xs: number[] } | null = null;
-  for (const a of D) for (const b of C) for (const c of S) for (const d of N) for (const xb of PORTIONS) for (const xd of PORTIONS) {
-    const combo = [a, b, c, d];
-    const xs = [1, xb, 1, xd];
-    const kcal = combo.reduce((s, x, k) => s + x.kcal * xs[k]!, 0);
-    const p = combo.reduce((s, x, k) => s + x.p * xs[k]!, 0);
-    // Cerca de la meta, sin quedarse corto de proteína, distinto a ayer y sin agrandar porciones de más.
-    const repeat = combo.filter((x) => opts.avoid?.includes(x.id)).length;
-    const rot = combo.reduce((s, x, k) => s + ((DISHES.indexOf(x) + day * (k + 2)) % 7) * 0.05, 0);
-    const big = (xb - 1 + xd - 1) * 0.8;
-    const score = Math.abs(kcal - t.kcal) / 40 + Math.max(0, t.proteinG - p) / 4 + repeat * 1.5 + rot + big;
-    if (!best || score < best.score) best = { score, combo, xs };
-  }
+/** Un día del plan: rota las opciones de tu nutrióloga para no repetir, respetando tus cambios y lo que no te gusta. */
+export function dayMenu(_t: Targets, day: number, opts: { skip?: string[]; avoid?: string[]; fixed?: Partial<Record<Slot, string>> } = {}): DayMenu {
   const order: Slot[] = ["desayuno", "comida", "colacion", "cena"];
-  const meals = best!.combo.map((dish, k) => ({ slot: order[k]!, dish, swapped: Boolean(opts.fixed?.[order[k]!]), x: best!.xs[k]! }));
-  return { day, meals, kcal: Math.round(meals.reduce((s, m) => s + m.dish.kcal * m.x, 0)), p: Math.round(meals.reduce((s, m) => s + m.dish.p * m.x, 0)) };
+  const meals = order.map((slot, k) => {
+    const fixed = opts.fixed?.[slot] ? dishById(opts.fixed[slot]!) : null;
+    if (fixed) return { slot, dish: fixed, swapped: true, x: 1 };
+    const all = DISHES.filter((d) => d.slot === slot);
+    const ok = all.filter((d) => !opts.skip?.includes(d.id));
+    const list = ok.length ? ok : all;
+    let pick = list[(day + k) % list.length]!;
+    if (opts.avoid?.includes(pick.id) && list.length > 1) pick = list[(day + k + 1) % list.length]!;
+    return { slot, dish: pick, swapped: false, x: 1 };
+  });
+  return { day, meals, kcal: Math.round(meals.reduce((s, m) => s + m.dish.kcal, 0)), p: Math.round(meals.reduce((s, m) => s + m.dish.p, 0)) };
 }
 
 export const swapKey = (weekOf: string, day: number, slot: Slot) => `${weekOf}:${day}:${slot}`;
@@ -192,22 +196,23 @@ export const fmtQty = (g: Ing) => {
   return `${pretty} ${g.unit}`;
 };
 
-/** Qué te conviene comer ahorita con lo que ya llevas en el día. */
+/** Qué te toca ahorita según el plan del día. */
 export function nextMeal(s: HqState, today: string, hour: number) {
   const t = targetsFor(s);
   const d = L.dayOf(s, today);
-  const kcal = L.kcalOf(d);
-  const p = L.proteinOf(d);
-  const leftK = t.kcal - kcal;
-  const leftP = Math.max(0, t.proteinG - p);
-  const slot: Slot = hour < 11 ? "desayuno" : hour < 16 ? "comida" : hour < 19 ? "colacion" : "cena";
-  if (leftK < 150) {
-    return { slot, leftK, leftP, dish: dishById("jicama-panela"), text: leftK < 0 ? `Ya vas ${Math.abs(leftK).toLocaleString("es-MX")} kcal arriba. No lo compenses mañana: vuelve a tu plan normal. Si te da hambre, algo ligero y con proteína.` : "Ya casi cumples tus calorías. Si te da hambre, algo ligero y con proteína." };
-  }
-  const options = DISHES.filter((x) => x.slot === slot && !s.nutrition.skip.includes(x.id) && x.kcal <= leftK + 60);
-  const pick = options.sort((a, b) => (b.p / b.kcal) - (a.p / a.kcal))[0] ?? DISHES.filter((x) => x.slot === "colacion").sort((a, b) => a.kcal - b.kcal)[0]!;
-  const text = leftP > 40
-    ? `Te quedan ${leftK.toLocaleString("es-MX")} kcal y te faltan ${Math.round(leftP)} g de proteína: prioriza la proteína.`
-    : `Te quedan ${leftK.toLocaleString("es-MX")} kcal. Vas bien de proteína.`;
-  return { slot, leftK, leftP, dish: pick, text };
+  const leftK = t.kcal - L.kcalOf(d);
+  const leftP = Math.max(0, t.proteinG - L.proteinOf(d));
+  const slot: Slot = hour < 12 ? "desayuno" : hour < 16 ? "comida" : hour < 19 ? "colacion" : "cena";
+  const menu = weekMenu(s, weekStartOf(today));
+  const dish = menu[L.weekdayIndex(today)]!.meals.find((m) => m.slot === slot)!.dish;
+  const time = SLOTS.find((x) => x.id === slot)!.time;
+  const text = slot === "colacion"
+    ? "A las 5:00 pm toca tu batido de proteína. Si te da hambre antes: pepino, jícama o gelatina sin azúcar."
+    : `Opción del plan para hoy (${time}). Si se te antoja otra de las opciones de tu nutrióloga, cámbiala en el menú.`;
+  return { slot, leftK, leftP, dish, text };
+}
+
+/** Lunes de la semana de una fecha (AAAA-MM-DD). */
+function weekStartOf(date: string) {
+  return L.addDays(date, -L.weekdayIndex(date));
 }
