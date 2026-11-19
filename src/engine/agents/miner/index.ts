@@ -10,7 +10,7 @@ import {
   type MinerCandidate,
 } from "../../schemas/clip";
 import { TranscriptSchema, type Transcript, type TranscriptSegment } from "../../schemas/transcript";
-import { buildMinerPrompt, MINER_SYSTEM_PROMPT } from "./prompt";
+import { buildMinerPrompt, MINER_GAMING_PROMPT, MINER_SYSTEM_PROMPT } from "./prompt";
 import { buildWindows, mapWithConcurrency, overlapRatio, type TranscriptWindow } from "./windowing";
 
 export const MinerOptionsSchema = z.object({
@@ -31,6 +31,10 @@ export const MinerOptionsSchema = z.object({
   failFast: z.boolean().default(false),
   context: z.string().max(500).optional(),
   model: z.string().optional(),
+  /** "dev" = contenido de programación/mindset (30–60 s). "gaming" = reacciones y jugadas de stream. */
+  profile: z.enum(["dev", "gaming"]).default("dev"),
+  /** Segundos con volumen muy alto (de `loudHotspots`), para que el modelo los vea. */
+  hotspots: z.array(z.number().nonnegative()).max(500).default([]),
 });
 export type MinerOptions = z.input<typeof MinerOptionsSchema>;
 
@@ -148,7 +152,7 @@ export async function mineClips(
   const runWindow = async (w: TranscriptWindow) => {
     try {
       const res = await llm.generate({
-        system: MINER_SYSTEM_PROMPT,
+        system: opts.profile === "gaming" ? MINER_GAMING_PROMPT : MINER_SYSTEM_PROMPT,
         prompt: buildMinerPrompt({
           segments: w.segments,
           windowIndex: w.index,
@@ -157,6 +161,7 @@ export async function mineClips(
           minDurationSec: opts.minDurationSec,
           maxDurationSec: opts.maxDurationSec,
           context: opts.context,
+          hotspots: opts.hotspots,
         }),
         schema: MinerResponseSchema,
         schemaName: "report_clips",

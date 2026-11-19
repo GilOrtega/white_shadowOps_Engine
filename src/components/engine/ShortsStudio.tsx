@@ -228,7 +228,8 @@ function JobCard({ job, hq, onChange }: { job: ShortJob; hq: HqState; onChange: 
     try {
       const res = await fetch(job.result.url);
       const file = new File([await res.blob()], `short-${job.id}.mp4`, { type: "video/mp4" });
-      const text = [job.hook, job.badge && `#${job.badge.replace(/\s+/g, "")}`, "#reto60dias #gym #disciplina"].filter(Boolean).join(" ");
+      const tags = job.source === "stream" ? "#gta #gaming #ps5 #streamer" : "#reto60dias #gym #disciplina";
+      const text = [job.hook, job.badge && `#${job.badge.replace(/\s+/g, "")}`, tags].filter(Boolean).join(" ");
       if (navigator.canShare?.({ files: [file] })) {
         await navigator.share({ files: [file], text });
       } else {
@@ -251,10 +252,12 @@ function JobCard({ job, hq, onChange }: { job: ShortJob; hq: HqState; onChange: 
     <li className="glass flex flex-col gap-3 rounded-[22px] p-4">
       <div className="flex flex-wrap items-center gap-2">
         <span className={`rounded-full px-2.5 py-1 text-[12px] font-semibold ${tone}`}>{STATUS_LABEL[job.status]}</span>
-        <span className="text-[12px] text-mute">{new Date(job.createdAt).toLocaleString("es-MX", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })} · {job.clips.length} clip{job.clips.length === 1 ? "" : "s"}</span>
+        {job.qa && <span className={`rounded-full px-2.5 py-1 text-[12px] font-bold ${job.qa.level === "pass" ? "bg-lime/15 text-lime" : job.qa.level === "warn" ? "bg-amber/15 text-amber" : "bg-rose/15 text-rose"}`}>{job.qa.level.toUpperCase()}</span>}
+        <span className="text-[12px] text-mute">{new Date(job.createdAt).toLocaleString("es-MX", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })} · {job.source === "stream" ? "de tu stream" : `${job.clips.length} clip${job.clips.length === 1 ? "" : "s"}`}</span>
         {job.result && <span className="text-[12px] text-mute">· {sec(job.result.durationSec)}</span>}
       </div>
       {job.hook && <p className="text-[15px] font-semibold">{job.hook}</p>}
+      {job.qa && job.qa.notes.length > 0 && <p className="text-[13px] text-amber">{job.qa.notes.join(" · ")}</p>}
       {isActive(job.status) && (
         <p role="status" className="flex items-center gap-2 text-[14px] text-iris"><span aria-hidden="true" className="h-2 w-2 animate-pulse rounded-full bg-iris" />{job.stage || "En cola"}…</p>
       )}

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const ClipCategorySchema = z.enum(["tecnico", "mindset", "historia", "tutorial", "opinion"]);
+export const ClipCategorySchema = z.enum(["tecnico", "mindset", "historia", "tutorial", "opinion", "reaccion", "jugada", "humor"]);
 export type ClipCategory = z.infer<typeof ClipCategorySchema>;
 
 /**
