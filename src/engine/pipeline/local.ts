@@ -1,6 +1,7 @@
 import { mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 import { mineClips, type MinerOptions, type MinerResult } from "../agents/miner";
+import { intensity, loudHotspots, parseQa, parseRms, qaArgs, reviewClip, rmsArgs, type QaResult } from "../clipper/analysis";
 import { EngineError } from "../core/errors";
 import type { StructuredLlm } from "../core/llm";
 import type { Transcriber } from "../ingest/deepgram";
@@ -16,7 +17,7 @@ import { TranscriptSchema, type Transcript } from "../schemas/transcript";
  * vuelves a correr y retoma desde el último paso terminado (no paga 2 veces la API).
  */
 
-export type PipelineStep = "audio" | "transcribe" | "mine" | "render";
+export type PipelineStep = "audio" | "loudness" | "transcribe" | "mine" | "render" | "qa";
 export type PipelineEvent =
   | { type: "step"; step: PipelineStep; status: "start" | "cached" | "done"; detail?: string }
   | { type: "progress"; step: "render"; clipIndex: number; clipCount: number; ratio: number };
@@ -29,6 +30,10 @@ export interface LocalPipelineInput {
   context?: string;
   miner?: MinerOptions;
   maxClips?: number;
+  /** Streams de gaming: busca momentos de volumen alto y los usa para elegir y ordenar clips. */
+  loudness?: boolean;
+  /** Revisa cada clip renderizado (silencio, negro, sin voz) → PASS / WARN / FAIL. */
+  qa?: boolean;
 }
 
 export interface LocalPipelineDeps {
@@ -45,6 +50,8 @@ export interface LocalPipelineResult {
   transcript: Transcript;
   miner: MinerResult;
   renders: RenderResult[];
+  /** Una por render, en el mismo orden (vacío si no se pidió revisión). */
+  qa: QaResult[];
 }
 
 const exists = async (p: string) => {
@@ -98,6 +105,22 @@ export async function runLocalPipeline(input: LocalPipelineInput, deps: LocalPip
     emit({ type: "step", step: "audio", status: "done" });
   }
 
+  // 1b) Volumen por segundo → momentos de volumen alto (gritos, reacciones)
+  let rms: number[] = [];
+  if (input.loudness) {
+    const loudPath = join(jobDir, "loudness.json");
+    if (await exists(loudPath)) {
+      rms = JSON.parse(await readFile(loudPath, "utf8")) as number[];
+      emit({ type: "step", step: "loudness", status: "cached" });
+    } else {
+      emit({ type: "step", step: "loudness", status: "start" });
+      const { stdout } = await runBinary(bins.ffmpeg, rmsArgs(audioPath), { timeoutMs: 30 * 60_000, signal: deps.signal });
+      rms = parseRms(stdout);
+      await writeJson(loudPath, rms);
+      emit({ type: "step", step: "loudness", status: "done", detail: `${loudHotspots(rms).length} momentos fuertes` });
+    }
+  }
+
   // 2) Transcripción
   const transcriptPath = join(jobDir, "transcript.json");
   let transcript: Transcript;
@@ -119,7 +142,13 @@ export async function runLocalPipeline(input: LocalPipelineInput, deps: LocalPip
     emit({ type: "step", step: "mine", status: "cached" });
   } else {
     emit({ type: "step", step: "mine", status: "start" });
-    miner = await mineClips(deps.llm, transcript, { ...input.miner, context: input.context }, deps.signal);
+    miner = await mineClips(deps.llm, transcript, { ...input.miner, context: input.context, hotspots: rms.length ? loudHotspots(rms) : undefined }, deps.signal);
+    // Con volumen: lo que tiene grito/reacción sube en la lista (máx. +15 puntos).
+    if (rms.length) {
+      miner.clips = miner.clips
+        .map((c) => ({ ...c, scores: { ...c.scores, final: Math.round(c.scores.final + Math.min(15, intensity(rms, c.startTime, c.endTime) * 1.2)) } }))
+        .sort((a, b) => b.scores.final - a.scores.final);
+    }
     await writeJson(clipsPath, miner);
     emit({ type: "step", step: "mine", status: "done", detail: `${miner.clips.length} clips` });
   }
@@ -132,7 +161,7 @@ export async function runLocalPipeline(input: LocalPipelineInput, deps: LocalPip
   for (const [i, clip] of clips.entries()) {
     renders.push(
       await renderClip(
-        { jobId: "renders", sourcePath: videoPath, clip, words, layout: input.layout, outDir: jobDir },
+        { jobId: "renders", sourcePath: videoPath, clip, words, layout: input.layout, outDir: jobDir, hook: clip.hookText ? { text: clip.hookText.slice(0, 80), durationSec: 2.6 } : null },
         {
           bins,
           probe,
@@ -144,11 +173,25 @@ export async function runLocalPipeline(input: LocalPipelineInput, deps: LocalPip
   }
   emit({ type: "step", step: "render", status: "done" });
 
+  // 5) Revisión de cada clip
+  const qa: QaResult[] = [];
+  if (input.qa) {
+    emit({ type: "step", step: "qa", status: "start" });
+    for (const [i, r] of renders.entries()) {
+      const { stderrTail } = await runBinary(bins.ffmpeg, qaArgs(r.outputPath), { timeoutMs: 5 * 60_000, signal: deps.signal });
+      const m = parseQa(stderrTail);
+      const c = clips[i]!;
+      qa.push(reviewClip({ durationSec: r.durationSec, ...m, words: words.filter((w) => w.start >= c.startTime && w.end <= c.endTime).length }));
+    }
+    const n = (l: string) => qa.filter((q) => q.level === l).length;
+    emit({ type: "step", step: "qa", status: "done", detail: `PASS ${n("pass")} · WARN ${n("warn")} · FAIL ${n("fail")}` });
+  }
+
   await writeJson(join(jobDir, "result.json"), {
     jobId,
     video: videoPath,
-    clips: clips.map((c, i) => ({ ...c, file: renders[i]!.outputPath })),
+    clips: clips.map((c, i) => ({ ...c, file: renders[i]!.outputPath, qa: qa[i] ?? null })),
   });
 
-  return { jobId, jobDir, transcript, miner, renders };
+  return { jobId, jobDir, transcript, miner, renders, qa };
 }

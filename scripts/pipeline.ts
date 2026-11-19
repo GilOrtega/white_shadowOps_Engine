@@ -17,7 +17,7 @@ const LAYOUTS: Record<string, Layout> = {
   split: { mode: "split", top: { x: 0.72, y: 0.68, w: 0.28, h: 0.32 }, bottom: { x: 0, y: 0, w: 0.72, h: 1 }, topRatio: 0.38 },
 };
 
-const LABEL = { audio: "Extrayendo audio", transcribe: "Transcribiendo (Deepgram)", mine: "Buscando clips (Claude)", render: "Renderizando 9:16" } as const;
+const LABEL = { audio: "Extrayendo audio", loudness: "Midiendo volumen", transcribe: "Transcribiendo (Deepgram)", mine: "Buscando clips (Claude)", render: "Renderizando 9:16", qa: "Revisando clips" } as const;
 
 async function main() {
   const [video, ...rest] = process.argv.slice(2);

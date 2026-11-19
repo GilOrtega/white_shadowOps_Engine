@@ -58,6 +58,8 @@ export function buildRenderArgs(args: {
 
 interface RunOptions {
   cwd?: string;
+  /** Variables de entorno del proceso (por defecto, las del padre). */
+  env?: NodeJS.ProcessEnv;
   signal?: AbortSignal;
   timeoutMs: number;
   /** Duración esperada de salida, para calcular el % de progreso. */
@@ -70,7 +72,7 @@ export function runBinary(bin: string, argv: string[], opts: RunOptions): Promis
   return new Promise((resolve, reject) => {
     if (opts.signal?.aborted) return reject(new EngineError("ABORTED", "Operación cancelada"));
 
-    const child = spawn(bin, argv, { cwd: opts.cwd, stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
+    const child = spawn(bin, argv, { cwd: opts.cwd, env: opts.env, stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
     let stdout = "";
     let stderr = "";
     let settled = false;

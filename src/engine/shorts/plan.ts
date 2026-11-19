@@ -23,12 +23,23 @@ export type ShortClip = z.infer<typeof ShortClipSchema>;
 export const ShortStatusSchema = z.enum(["queued", "rendering", "ready", "error", "approved", "discarded"]);
 export type ShortStatus = z.infer<typeof ShortStatusSchema>;
 
+export const QaSchema = z.object({
+  level: z.enum(["pass", "warn", "fail"]),
+  notes: z.array(z.string().max(80)).max(8).default([]),
+});
+export type Qa = z.infer<typeof QaSchema>;
+
 export const ShortJobSchema = z.object({
   id: z.string().regex(/^[a-z0-9]{6,24}$/),
   createdAt: z.string(),
   updatedAt: z.string(),
   status: ShortStatusSchema,
-  clips: z.array(ShortClipSchema).min(1).max(MAX_CLIPS),
+  /** "dia" = clips del celular editados en GitHub Actions; "stream" = cortado de tu stream en tu PC. */
+  source: z.enum(["dia", "stream"]).default("dia"),
+  /** Los de stream ya llegan editados: no traen clips originales. */
+  clips: z.array(ShortClipSchema).max(MAX_CLIPS),
+  /** Revisión automática (solo los de stream). */
+  qa: QaSchema.nullable().default(null),
   hook: z.string().trim().max(80).default(""),
   badge: z.string().trim().max(30).default(""),
   /** Fase del trabajo mientras se edita (para mostrar avance). */
@@ -44,6 +55,14 @@ export const NewShortSchema = z.object({
   clips: z.array(ShortClipSchema).min(1).max(MAX_CLIPS),
   hook: z.string().trim().max(80).default(""),
   badge: z.string().trim().max(30).default(""),
+});
+
+/** Lo que manda el Clipper de tu PC para registrar un clip ya editado. */
+export const StreamClipSchema = z.object({
+  result: z.object({ url: z.string().url().max(600), pathname: z.string().min(1).max(300), durationSec: z.number().min(0).max(600) }),
+  hook: z.string().trim().max(80).default(""),
+  transcript: z.string().max(4000).default(""),
+  qa: QaSchema,
 });
 
 export const newJobId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`.slice(0, 24);

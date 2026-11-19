@@ -20,7 +20,7 @@ export async function POST(req: Request) {
   if (!parsed.success) return Response.json({ code: "INPUT_INVALID", message: z.prettifyError(parsed.error) }, { status: 400 });
   if (!shortsReady().kv) return Response.json({ code: "NOT_CONFIGURED", message: "Falta la base de datos (Upstash)." }, { status: 503 });
   const now = new Date().toISOString();
-  let job: ShortJob = { id: newJobId(), createdAt: now, updatedAt: now, status: "queued", stage: "Esperando al editor", result: null, transcript: "", error: "", ...parsed.data };
+  let job: ShortJob = { id: newJobId(), createdAt: now, updatedAt: now, status: "queued", source: "dia", qa: null, stage: "Esperando al editor", result: null, transcript: "", error: "", ...parsed.data };
   await saveJob(job);
   const problem = await dispatchRender(job.id);
   if (problem) {
